@@ -70,7 +70,8 @@ Regeln von Kicktipp selbst bei der Tippabgabe durchgesetzt werden.
 Tipp inkl. Punkteaufschlüsselung), `fact_ranking_snapshot` (eine Zeile pro
 Spieler und Spieltag mit kumulierten Werten - deckt Formkurve,
 Ranking-Verlauf und aktuelle Bestenliste in einer Tabelle ab) und
-`fact_player_statistics` als Fakten.
+`fact_player_statistics` (inkl. Aufschlüsselung der Tendenz-Treffer nach
+Heimsieg/Remis/Auswärtssieg) als Fakten.
 
 ## Power-BI-Unabhängigkeit
 

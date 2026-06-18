@@ -34,7 +34,9 @@ automatisierten Test gegen die echte Kicktipp-Seite - siehe
 
 Bevor Power BI angebunden wird, lässt sich die komplette Pipeline lokal
 in einem kleinen Web-Dashboard anschauen - Bestenliste mit Formkurve,
-Spieltag-Details inkl. Tippverteilung, und die Statistik-/Bremsfett-Seite.
+Spieltag-Details inkl. Tippverteilung, die Statistik-/Bremsfett-Seite,
+Ranking-Verlauf über die Saison sowie einen Tippverhalten-Tab mit
+Tendenz-Vergleich, Spielervergleich und Team-Tendenzen pro Spieler.
 
 Mit Testdaten starten (kein Kicktipp-Zugang nötig):
 
@@ -112,6 +114,15 @@ docs/             Architektur-Dokumentation
 ```
 
 ## Bekannte offene Punkte
+
+- **Schema-Änderungen erfordern eine frische Datenbank-Datei.** `SqlDataSink`
+  nutzt `metadata.create_all()`, das nur fehlende Tabellen anlegt, aber
+  niemals bestehende Tabellen ändert. Wenn sich das Schema ändert (z.B. neue
+  Spalten in `fact_player_statistics`), gegen eine bereits existierende
+  SQLite-Datei aber die alte Struktur bestehen bleibt → Fehler wie
+  `no such column`. Abhilfe: die `.db`-Datei löschen und die Pipeline/das
+  Seed-Skript neu laufen lassen (unkritisch, da ohnehin nichts dauerhaft
+  historisiert wird - jeder Lauf schreibt die Fakten-Tabellen komplett neu).
 
 - Scraper-Selektoren (`KicktippSelectors`, `KicktippAuthenticator`) sind
   unverifiziert, da aus der Entwicklungsumgebung kein Zugriff auf

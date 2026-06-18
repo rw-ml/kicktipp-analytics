@@ -10,6 +10,18 @@
   <span class="legend__item"><span class="legend__swatch points-0"></span>0 (Falsche Tendenz)</span>
 </div>
 
+<div class="legend tip-scale-legend">
+  <span class="legend__label">Balkenlänge ({{ total_players }} Tippspieler insgesamt):</span>
+  <div class="tip-scale">
+    {% for n in range(1, total_players + 1) %}
+    <span class="tip-scale__tick" style="left: {{ (n / total_players * 100) | round(2) }}%">
+      <span class="tip-scale__tick-mark"></span>
+      <span class="tip-scale__tick-label">{{ n }}</span>
+    </span>
+    {% endfor %}
+  </div>
+</div>
+
 <section class="panel">
   <div class="panel__header-row">
     <h2 class="panel__title">Spieltag {{ matchday_number }}</h2>
@@ -36,14 +48,13 @@
 
     {% if match.tip_distribution %}
     <div class="tip-distribution">
-      {% set max_count = match.tip_distribution[0].count %}
       {% for d in match.tip_distribution %}
       <div class="tip-distribution__row">
         <span class="tip-distribution__score {{ d.tier_class }}">{{ d.home_goals }}:{{ d.away_goals }}</span>
         <span class="tip-distribution__bar-track">
-          <span class="tip-distribution__bar {{ d.tier_class }}" style="width: {{ (d.count / max_count * 100) | round(0, 'floor') }}%"></span>
+          <span class="tip-distribution__bar {{ d.tier_class }}" style="width: {{ (d.count / total_players * 100) | round(2) }}%"></span>
         </span>
-        <span class="tip-distribution__text">{{ d.players | join(', ') }} ({{ d.count }} Tippspieler)</span>
+        <span class="tip-distribution__text">{{ d.players | join(', ') }} ({{ d.count }} Tippspieler){% if d.is_actual %} <span class="badge badge--winner">Ergebnis</span>{% endif %}</span>
       </div>
       {% endfor %}
     </div>
@@ -53,7 +64,10 @@
 </section>
 
 <section class="panel">
-  <h2 class="panel__title">Punkte an diesem Spieltag</h2>
+  <div class="panel__header-row">
+    <h2 class="panel__title">Punkte an diesem Spieltag</h2>
+    <span class="panel__stat">Ø {{ average_points_this_matchday }} Punkte</span>
+  </div>
   <table class="ranking-table">
     <thead>
       <tr><th>Spieler</th><th class="num-col">Punkte</th><th></th></tr>

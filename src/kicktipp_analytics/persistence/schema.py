@@ -85,6 +85,9 @@ fact_player_statistics = Table(
     Column("total_tips", Integer, nullable=False),
     Column("exact_hits", Integer, nullable=False),
     Column("tendency_hits", Integer, nullable=False),
+    Column("home_win_tips_correct", Integer, nullable=False),
+    Column("draw_tips_correct", Integer, nullable=False),
+    Column("away_win_tips_correct", Integer, nullable=False),
     Column("misses", Integer, nullable=False),
     Column("hit_rate", Float, nullable=False),
 )

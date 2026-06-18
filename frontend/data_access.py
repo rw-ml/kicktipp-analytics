@@ -75,6 +75,11 @@ def has_data() -> bool:
         return bool(count)
 
 
+def _player_count() -> int:
+    with get_engine().connect() as conn:
+        return conn.execute(select(func.count()).select_from(dim_player)).scalar() or 0
+
+
 def latest_matchday_number() -> int | None:
     with get_engine().connect() as conn:
         return conn.execute(select(func.max(dim_match.c.matchday_number))).scalar()
@@ -138,6 +143,7 @@ def current_ranking() -> list[dict]:
                 "matchday_wins": row.cumulative_matchday_wins,
                 "rank": row.rank_after_matchday,
                 "trend": trend,
+                "average_points_per_matchday": round(row.cumulative_points / last, 1),
             }
         )
     return ranking
@@ -168,6 +174,37 @@ def formkurve_series() -> dict:
 
     sorted_matchdays = sorted(matchdays)
     return {"matchdays": sorted_matchdays, "players": series}
+
+
+def rank_history_series() -> dict:
+    """Pro Spieler eine Zeitreihe (Spieltag -> Rang) - deckt die Anforderung
+    'Ranking-Veränderungen über die Saison' ab (im Unterschied zur Formkurve,
+    die die Punkte zeigt, nicht die Platzierung)."""
+    with get_engine().connect() as conn:
+        rows = conn.execute(
+            select(
+                fact_ranking_snapshot.c.player_id,
+                dim_player.c.display_name,
+                fact_ranking_snapshot.c.matchday_number,
+                fact_ranking_snapshot.c.rank_after_matchday,
+            )
+            .join(dim_player, dim_player.c.player_id == fact_ranking_snapshot.c.player_id)
+            .order_by(fact_ranking_snapshot.c.matchday_number)
+        ).all()
+
+    series: dict[str, dict] = {}
+    matchdays: set[int] = set()
+    max_rank = 1
+    for row in rows:
+        matchdays.add(row.matchday_number)
+        max_rank = max(max_rank, row.rank_after_matchday)
+        entry = series.setdefault(
+            row.player_id, {"display_name": row.display_name, "rank_by_matchday": {}}
+        )
+        entry["rank_by_matchday"][row.matchday_number] = row.rank_after_matchday
+
+    sorted_matchdays = sorted(matchdays)
+    return {"matchdays": sorted_matchdays, "players": series, "max_rank": max_rank}
 
 
 def matchday_detail(matchday_number: int) -> dict:
@@ -266,8 +303,18 @@ def matchday_detail(matchday_number: int) -> dict:
         }
         for p in points_rows
     ]
+    average_points_this_matchday = (
+        round(sum(p["points"] for p in points_this_matchday) / len(points_this_matchday), 1)
+        if points_this_matchday
+        else 0.0
+    )
 
-    return {"matches": matches, "points_this_matchday": points_this_matchday}
+    return {
+        "matches": matches,
+        "points_this_matchday": points_this_matchday,
+        "average_points_this_matchday": average_points_this_matchday,
+        "total_players": _player_count(),
+    }
 
 
 def assign_competition_rank(stats: list[dict], key: str) -> None:
@@ -297,6 +344,9 @@ def statistics_table() -> list[dict]:
                 fact_player_statistics.c.total_tips,
                 fact_player_statistics.c.exact_hits,
                 fact_player_statistics.c.tendency_hits,
+                fact_player_statistics.c.home_win_tips_correct,
+                fact_player_statistics.c.draw_tips_correct,
+                fact_player_statistics.c.away_win_tips_correct,
                 fact_player_statistics.c.misses,
                 fact_player_statistics.c.hit_rate,
             )
@@ -332,6 +382,7 @@ def _fetch_tips_with_team_context() -> list[dict]:
             select(
                 fact_tip.c.player_id,
                 dim_player.c.display_name,
+                fact_tip.c.match_id,
                 fact_tip.c.tipped_home_goals,
                 fact_tip.c.tipped_away_goals,
                 dim_match.c.home_team_id,
@@ -461,3 +512,65 @@ def tip_behavior_detail(player_id: str) -> dict | None:
     all_tips = _fetch_tips_with_team_context()
     player_tips = [t for t in all_tips if t["player_id"] == player_id]
     return _compute_player_detail(player_tips, player_id)
+
+
+def _tendency_label(home_goals: int, away_goals: int) -> str:
+    if home_goals > away_goals:
+        return "home"
+    if home_goals < away_goals:
+        return "away"
+    return "draw"
+
+
+def _compute_similarity_matrix(tip_rows: list[dict]) -> dict:
+    """
+    Pragmatischer Ersatz für eine vollständige Cluster-Analyse (für eine
+    private Tippspielrunde mit überschaubarer Spielerzahl aussagekräftiger
+    als z.B. k-means): für jedes Spielerpaar wird der Anteil der gemeinsam
+    getippten Spiele berechnet, bei denen beide dieselbe Tendenz (Heimsieg/
+    Remis/Auswärtssieg) getippt haben. Reine Funktion, keine DB-Zugriffe.
+    """
+    by_match: dict[str, list[dict]] = defaultdict(list)
+    for t in tip_rows:
+        by_match[t["match_id"]].append(t)
+
+    display_names: dict[str, str] = {}
+    common_count: dict[tuple[str, str], int] = defaultdict(int)
+    same_tendency_count: dict[tuple[str, str], int] = defaultdict(int)
+
+    for tips_in_match in by_match.values():
+        for t in tips_in_match:
+            display_names[t["player_id"]] = t["display_name"]
+        for i in range(len(tips_in_match)):
+            for j in range(i + 1, len(tips_in_match)):
+                a, b = tips_in_match[i], tips_in_match[j]
+                key = tuple(sorted((a["player_id"], b["player_id"])))
+                common_count[key] += 1
+                tendency_a = _tendency_label(a["tipped_home_goals"], a["tipped_away_goals"])
+                tendency_b = _tendency_label(b["tipped_home_goals"], b["tipped_away_goals"])
+                if tendency_a == tendency_b:
+                    same_tendency_count[key] += 1
+
+    players = sorted(display_names.keys(), key=lambda p: display_names[p])
+    matrix = []
+    for p1 in players:
+        row = []
+        for p2 in players:
+            if p1 == p2:
+                row.append(None)
+                continue
+            key = tuple(sorted((p1, p2)))
+            common = common_count.get(key, 0)
+            same = same_tendency_count.get(key, 0)
+            row.append(round(same / common * 100) if common else None)
+        matrix.append(row)
+
+    return {
+        "player_ids": players,
+        "display_names": [display_names[p] for p in players],
+        "matrix": matrix,
+    }
+
+
+def player_similarity_matrix() -> dict:
+    return _compute_similarity_matrix(_fetch_tips_with_team_context())

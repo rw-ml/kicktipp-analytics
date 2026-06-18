@@ -3,6 +3,9 @@
 
 {% block content %}
 <section class="panel">
+  <div class="panel__header-row">
+    <a class="back-link" href="{{ url_for('tip_behavior_overview') }}">← Zur Übersicht</a>
+  </div>
   <div class="player-pills player-pills--in-panel">
     {% for p in players %}
     <a class="player-pill {% if p.player_id == player_id %}is-active{% endif %}" href="{{ url_for('tip_behavior_detail', player_id=p.player_id) }}">{{ p.display_name }}</a>

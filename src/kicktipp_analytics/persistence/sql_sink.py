@@ -168,6 +168,9 @@ class SqlDataSink:
                             "total_tips": s.total_tips,
                             "exact_hits": s.exact_hits,
                             "tendency_hits": s.tendency_hits,
+                            "home_win_tips_correct": s.home_win_tips_correct,
+                            "draw_tips_correct": s.draw_tips_correct,
+                            "away_win_tips_correct": s.away_win_tips_correct,
                             "misses": s.misses,
                             "hit_rate": s.hit_rate,
                         }

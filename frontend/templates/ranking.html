@@ -11,6 +11,7 @@
         <th></th>
         <th>Spieler</th>
         <th class="num-col">Punkte</th>
+        <th class="num-col">Ø / Spieltag</th>
         <th class="num-col">Siege</th>
       </tr>
     </thead>
@@ -26,6 +27,7 @@
         </td>
         <td class="player-col">{{ entry.display_name }}</td>
         <td class="num-col points-col">{{ entry.points }}</td>
+        <td class="num-col">{{ entry.average_points_per_matchday }}</td>
         <td class="num-col">{{ entry.matchday_wins }}</td>
       </tr>
       {% endfor %}
@@ -41,13 +43,22 @@
   </div>
 </section>
 
+<section class="panel">
+  <h2 class="panel__title">Ranking-Verlauf</h2>
+  <p class="panel__hint">Platzierung je Spieltag (Rang 1 oben).</p>
+  <div class="chart-container">
+    <canvas id="rankHistory"></canvas>
+  </div>
+</section>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-  const matchdays = {{ formkurve.matchdays | tojson }};
-  const players = {{ formkurve.players | tojson }};
   const palette = ["#2F6B44", "#C8962C", "#B23A2E", "#3A5A78", "#7A5C9E", "#8A7F5C"];
 
-  const datasets = Object.entries(players).map(([playerId, info], index) => ({
+  const matchdays = {{ formkurve.matchdays | tojson }};
+  const players = {{ formkurve.players | tojson }};
+
+  const pointsDatasets = Object.entries(players).map(([playerId, info], index) => ({
     label: info.display_name,
     data: matchdays.map((md) => info.points_by_matchday[md] ?? null),
     borderColor: palette[index % palette.length],
@@ -60,18 +71,47 @@
 
   new Chart(document.getElementById("formkurve"), {
     type: "line",
-    data: {
-      labels: matchdays.map((md) => "Spieltag " + md),
-      datasets: datasets,
-    },
+    data: { labels: matchdays.map((md) => "Spieltag " + md), datasets: pointsDatasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: { position: "bottom", labels: { font: { family: "IBM Plex Sans" } } },
-      },
+      plugins: { legend: { position: "bottom", labels: { font: { family: "IBM Plex Sans" } } } },
       scales: {
         y: { beginAtZero: true, ticks: { font: { family: "IBM Plex Mono" } } },
+        x: { ticks: { font: { family: "IBM Plex Sans" } } },
+      },
+    },
+  });
+
+  const rankMatchdays = {{ rank_history.matchdays | tojson }};
+  const rankPlayers = {{ rank_history.players | tojson }};
+  const maxRank = {{ rank_history.max_rank | tojson }};
+
+  const rankDatasets = Object.entries(rankPlayers).map(([playerId, info], index) => ({
+    label: info.display_name,
+    data: rankMatchdays.map((md) => info.rank_by_matchday[md] ?? null),
+    borderColor: palette[index % palette.length],
+    backgroundColor: palette[index % palette.length],
+    spanGaps: true,
+    tension: 0.15,
+    pointRadius: 4,
+    borderWidth: 2,
+  }));
+
+  new Chart(document.getElementById("rankHistory"), {
+    type: "line",
+    data: { labels: rankMatchdays.map((md) => "Spieltag " + md), datasets: rankDatasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { font: { family: "IBM Plex Sans" } } } },
+      scales: {
+        y: {
+          reverse: true,
+          min: 1,
+          max: maxRank,
+          ticks: { stepSize: 1, font: { family: "IBM Plex Mono" } },
+        },
         x: { ticks: { font: { family: "IBM Plex Sans" } } },
       },
     },

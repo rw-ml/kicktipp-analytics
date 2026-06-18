@@ -45,6 +45,7 @@ def ranking():
         "ranking.html",
         ranking=data_access.current_ranking(),
         formkurve=data_access.formkurve_series(),
+        rank_history=data_access.rank_history_series(),
     )
 
 
@@ -81,6 +82,7 @@ def tip_behavior_overview():
         "tip_behavior_overview.html",
         overview=data_access.tip_behavior_overview(),
         players=data_access.list_players(),
+        similarity=data_access.player_similarity_matrix(),
     )
 
 

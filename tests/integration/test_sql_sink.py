@@ -56,7 +56,15 @@ def test_sql_sink_roundtrip(tmp_path):
     sink.write_ranking_snapshots([snapshot])
 
     stats = PlayerStatistics(
-        player_id="p1", total_tips=1, exact_hits=1, tendency_hits=1, misses=0, hit_rate=1.0
+        player_id="p1",
+        total_tips=1,
+        exact_hits=1,
+        tendency_hits=1,
+        home_win_tips_correct=1,
+        draw_tips_correct=0,
+        away_win_tips_correct=0,
+        misses=0,
+        hit_rate=1.0,
     )
     sink.write_statistics([stats])
 

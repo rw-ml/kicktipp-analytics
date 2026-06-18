@@ -29,6 +29,42 @@
 </section>
 
 <section class="panel">
+  <h2 class="panel__title">Spielervergleich</h2>
+  <p class="panel__hint">
+    Anteil der gemeinsam getippten Spiele, bei denen zwei Spieler dieselbe Tendenz gewählt haben.
+    Hohe Werte deuten auf ein ähnliches Tippmuster hin, niedrige auf gegensätzliche Einschätzungen.
+  </p>
+  {% if similarity.player_ids | length > 1 %}
+  <div class="similarity-matrix-wrap">
+    <table class="similarity-matrix">
+      <thead>
+        <tr>
+          <th></th>
+          {% for name in similarity.display_names %}<th>{{ name }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row_name in similarity.display_names %}
+        <tr>
+          <th>{{ row_name }}</th>
+          {% for value in similarity.matrix[loop.index0] %}
+          {% if value is none %}
+          <td class="similarity-cell similarity-cell--empty">–</td>
+          {% else %}
+          <td class="similarity-cell" style="background: rgba(47, 107, 68, {{ (value / 100 * 0.55) | round(2) }});">{{ value }}&nbsp;%</td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="panel__hint" style="padding-bottom: 1.1rem;">Für einen Vergleich werden mindestens zwei Spieler mit Tipps benötigt.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
   <h2 class="panel__title">Spieler im Detail</h2>
   <p class="panel__hint">Auswählen, um Lieblingsergebnisse und Team-Vorlieben einzelner Tippspieler zu sehen.</p>
   <div class="player-pills">

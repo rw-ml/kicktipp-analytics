@@ -11,6 +11,7 @@
   --terracotta: #A85C3B;
   --line: #DAD2BE;
   --panel: #FFFFFF;
+  --tip-bar-width: 180px;
 
   --font-display: "Oswald", sans-serif;
   --font-body: "IBM Plex Sans", sans-serif;
@@ -164,6 +165,12 @@ code {
 
 .panel__header-row .panel__title { padding: 0; border-bottom: none; }
 
+.panel__stat {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
 .ranking-table {
   width: 100%;
   border-collapse: collapse;
@@ -267,12 +274,12 @@ code {
   font-size: 1.1rem;
 }
 
-.tip-distribution { display: flex; flex-direction: column; gap: 0.4rem; }
+.tip-distribution { display: flex; flex-direction: column; gap: 0.5rem; }
 
 .tip-distribution__row {
   display: grid;
-  grid-template-columns: 2.6rem 1fr auto;
-  align-items: center;
+  grid-template-columns: 2.6rem var(--tip-bar-width) 1fr;
+  align-items: start;
   gap: 0.6rem;
   font-size: 0.85rem;
 }
@@ -286,10 +293,13 @@ code {
 }
 
 .tip-distribution__bar-track {
+  position: relative;
+  width: var(--tip-bar-width);
   background: rgba(27, 43, 34, 0.06);
-  height: 0.55rem;
+  height: 0.95rem;
   border-radius: 2px;
   overflow: hidden;
+  margin-top: 0.2rem;
 }
 
 .tip-distribution__bar {
@@ -297,7 +307,7 @@ code {
   height: 100%;
 }
 
-.tip-distribution__text { color: var(--ink-soft); font-size: 0.8rem; }
+.tip-distribution__text { color: var(--ink-soft); font-size: 0.8rem; line-height: 1.4; }
 
 /* Punkte-Farbskala: einheitlich für Tippverteilung und Legende */
 .points-4 { background: rgba(200, 150, 44, 0.18); color: var(--gold); }
@@ -344,6 +354,43 @@ code {
 .legend__swatch.points-2 { background: var(--blue); }
 .legend__swatch.points-1 { background: var(--orange); }
 .legend__swatch.points-0 { background: var(--cardred); }
+
+.tip-scale-legend { align-items: flex-start; padding-bottom: 0.9rem; }
+
+.tip-scale {
+  position: relative;
+  width: var(--tip-bar-width);
+  height: 0.95rem;
+  background: rgba(27, 43, 34, 0.06);
+  border-radius: 2px;
+  margin-top: 0.05rem;
+}
+
+.tip-scale__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+}
+
+.tip-scale__tick-mark {
+  display: block;
+  width: 1px;
+  height: 100%;
+  background: var(--ink-soft);
+  opacity: 0.6;
+}
+
+.tip-scale__tick-label {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+  margin-top: 0.2rem;
+}
 
 .empty-state {
   padding: 2.5rem;
@@ -411,6 +458,16 @@ code {
 
 .player-pills--in-panel { padding: 1rem 1.4rem; }
 
+.back-link {
+  display: block;
+  padding: 0.9rem 1.4rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.back-link:hover { color: var(--pitch); }
+
 .player-pill {
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -455,9 +512,41 @@ code {
 .is-bias-positive { color: var(--pitch-dark); font-weight: 600; }
 .is-bias-negative { color: var(--cardred); font-weight: 600; }
 
+.similarity-matrix-wrap {
+  overflow-x: auto;
+  padding: 1rem 1.4rem 1.3rem;
+}
+
+.similarity-matrix {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.similarity-matrix th,
+.similarity-matrix td {
+  padding: 0.5rem 0.7rem;
+  text-align: center;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.similarity-matrix thead th {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.similarity-matrix tbody th {
+  font-weight: 500;
+  text-align: left;
+  color: var(--ink);
+}
+
+.similarity-cell { font-family: var(--font-mono); }
+.similarity-cell--empty { color: var(--line); }
+
 @media (max-width: 640px) {
-  .tip-distribution__row { grid-template-columns: 2.6rem 1fr; }
-  .tip-distribution__text { grid-column: 1 / -1; }
+  :root { --tip-bar-width: 110px; }
   .tendency-row { grid-template-columns: 1fr; gap: 0.4rem; }
   .tendency-row__total { text-align: left; }
 }

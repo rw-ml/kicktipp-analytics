@@ -52,11 +52,14 @@ class PipelineOrchestrator:
         ]
 
         match_to_matchday = {m.id: m.matchday.number for m in matches}
+        match_to_actual_tendency = {
+            match_id: result.score.tendency for match_id, result in result_by_match.items()
+        }
         standings = self._ranking_calculator.calculate_matchday_standings(
             evaluations, match_to_matchday
         )
         snapshots = self._ranking_calculator.build_snapshots(standings)
-        statistics = self._statistics_calculator.calculate(evaluations)
+        statistics = self._statistics_calculator.calculate(evaluations, match_to_actual_tendency)
 
         for sink in self._sinks:
             sink.write_dimensions(players, matches)
