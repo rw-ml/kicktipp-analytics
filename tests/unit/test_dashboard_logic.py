@@ -5,6 +5,7 @@ diese reinen Funktionen, sodass sich die eigentliche Logik isoliert testen
 lässt (genau wie in der calculation-Schicht der Pipeline).
 """
 from data_access import (
+    _build_scale_ticks,
     _compute_player_detail,
     _compute_similarity_matrix,
     _compute_tendency_overview,
@@ -41,7 +42,7 @@ def test_points_tier_class_mapping():
     assert points_tier_class(None) == "points-unknown"
 
 
-def _tip(player_id, name, home_goals, away_goals, home_team="A", away_team="B", home_name="Team A", away_name="Team B", match_id="m1"):
+def _tip(player_id, name, home_goals, away_goals, home_team="A", away_team="B", home_name="Team A", away_name="Team B", match_id="m1", actual_home_goals=None, actual_away_goals=None):
     return {
         "player_id": player_id,
         "display_name": name,
@@ -52,22 +53,32 @@ def _tip(player_id, name, home_goals, away_goals, home_team="A", away_team="B", 
         "away_team_id": away_team,
         "home_team_name": home_name,
         "away_team_name": away_name,
+        "actual_home_goals": actual_home_goals,
+        "actual_away_goals": actual_away_goals,
     }
 
 
-def test_tendency_overview_counts_home_draw_away_correctly():
+def test_tendency_overview_counts_correct_win_and_draw_tips():
     tips = [
-        _tip("anna", "Anna", 2, 1),  # Heimsieg
-        _tip("anna", "Anna", 1, 1),  # Remis
-        _tip("anna", "Anna", 0, 2),  # Auswärtssieg
-        _tip("anna", "Anna", 3, 0),  # Heimsieg
+        # Heimsieg getippt, Heimsieg tatsächlich -> Sieg richtig
+        _tip("anna", "Anna", 2, 1, actual_home_goals=3, actual_away_goals=0),
+        # Auswärtssieg getippt, Auswärtssieg tatsächlich -> zählt ebenfalls als Sieg richtig
+        _tip("anna", "Anna", 0, 2, actual_home_goals=1, actual_away_goals=2),
+        # Heimsieg getippt, tatsächlich Unentschieden -> Sieg falsch
+        _tip("anna", "Anna", 2, 0, actual_home_goals=1, actual_away_goals=1),
+        # Remis getippt, Remis tatsächlich -> Unentschieden richtig
+        _tip("anna", "Anna", 1, 1, actual_home_goals=2, actual_away_goals=2),
+        # Remis getippt, tatsächlich Heimsieg -> Unentschieden falsch
+        _tip("anna", "Anna", 0, 0, actual_home_goals=1, actual_away_goals=0),
+        # Noch nicht gespielt -> fließt nicht in die Auswertung ein
+        _tip("anna", "Anna", 2, 1, actual_home_goals=None, actual_away_goals=None),
     ]
     overview = _compute_tendency_overview(tips)
     anna = overview[0]
-    assert anna["total"] == 4
-    assert anna["home_win_pct"] == 50.0
-    assert anna["draw_pct"] == 25.0
-    assert anna["away_win_pct"] == 25.0
+    assert anna["win_total"] == 3
+    assert anna["win_correct"] == 2
+    assert anna["draw_total"] == 2
+    assert anna["draw_correct"] == 1
 
 
 def test_player_detail_finds_top_scoreline_and_team_bias():
@@ -92,6 +103,22 @@ def test_player_detail_finds_top_scoreline_and_team_bias():
 
 def test_player_detail_returns_none_for_unknown_player():
     assert _compute_player_detail([], "unbekannt") is None
+
+
+def test_scale_ticks_thickness_at_5_and_10():
+    ticks = _build_scale_ticks(12)
+    thickness_by_n = {n: t["thickness"] for n, t in zip(range(1, 13), ticks)}
+    assert thickness_by_n[1] == "thin"
+    assert thickness_by_n[4] == "thin"
+    assert thickness_by_n[5] == "medium"
+    assert thickness_by_n[10] == "thick"
+    assert thickness_by_n[12] == "thin"
+    # letzter Tick liegt am rechten Rand (100%), da er den Maximalwert markiert
+    assert ticks[-1]["position_pct"] == 100.0
+
+
+def test_scale_ticks_empty_for_zero_max_count():
+    assert _build_scale_ticks(0) == []
 
 
 def test_similarity_matrix_finds_matching_and_diverging_tendencies():

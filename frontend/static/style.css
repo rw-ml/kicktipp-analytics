@@ -176,6 +176,10 @@ code {
   border-collapse: collapse;
 }
 
+.table-scroll {
+  overflow-x: auto;
+}
+
 .ranking-table th,
 .ranking-table td {
   padding: 0.85rem 1.4rem;
@@ -282,7 +286,16 @@ code {
   align-items: start;
   gap: 0.6rem;
   font-size: 0.85rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
 }
+
+.tip-distribution__row.is-actual {
+  background: rgba(200, 150, 44, 0.14);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.tip-distribution__row.is-actual .tip-distribution__text { color: var(--ink); font-weight: 500; }
 
 .tip-distribution__score {
   font-family: var(--font-mono);
@@ -290,6 +303,17 @@ code {
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
   text-align: center;
+}
+
+.result-flag {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 0.15rem;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .tip-distribution__bar-track {
@@ -305,7 +329,22 @@ code {
 .tip-distribution__bar {
   display: block;
   height: 100%;
+  position: relative;
+  z-index: 1;
 }
+
+.tip-distribution__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(27, 43, 34, 0.45);
+  z-index: 2;
+}
+
+.tip-distribution__tick--thin { opacity: 0.55; }
+.tip-distribution__tick--medium { width: 2px; opacity: 0.7; }
+.tip-distribution__tick--thick { width: 3px; opacity: 0.85; }
 
 .tip-distribution__text { color: var(--ink-soft); font-size: 0.8rem; line-height: 1.4; }
 
@@ -355,42 +394,19 @@ code {
 .legend__swatch.points-1 { background: var(--orange); }
 .legend__swatch.points-0 { background: var(--cardred); }
 
-.tip-scale-legend { align-items: flex-start; padding-bottom: 0.9rem; }
+.legend__item--ticks { gap: 0.3rem; }
 
-.tip-scale {
-  position: relative;
-  width: var(--tip-bar-width);
-  height: 0.95rem;
-  background: rgba(27, 43, 34, 0.06);
-  border-radius: 2px;
-  margin-top: 0.05rem;
-}
-
-.tip-scale__tick {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 0;
-}
-
-.tip-scale__tick-mark {
-  display: block;
+.tick-sample {
+  display: inline-block;
   width: 1px;
-  height: 100%;
+  height: 0.85rem;
   background: var(--ink-soft);
-  opacity: 0.6;
+  margin-left: 0.5rem;
 }
 
-.tip-scale__tick-label {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  transform: translateX(-50%);
-  font-size: 0.62rem;
-  font-family: var(--font-mono);
-  color: var(--ink-soft);
-  margin-top: 0.2rem;
-}
+.tick-sample--thin { opacity: 0.55; }
+.tick-sample--medium { width: 2px; opacity: 0.7; }
+.tick-sample--thick { width: 3px; opacity: 0.85; }
 
 .empty-state {
   padding: 2.5rem;
@@ -405,50 +421,6 @@ code {
   color: var(--ink);
 }
 
-.tendency-overview {
-  display: flex;
-  flex-direction: column;
-}
-
-.tendency-row {
-  display: grid;
-  grid-template-columns: 6rem 1fr 5.5rem;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.75rem 1.4rem;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink);
-}
-
-.tendency-row:hover { background: rgba(27, 43, 34, 0.03); }
-.tendency-row:last-child { border-bottom: none; }
-
-.tendency-row__name { font-weight: 500; }
-
-.tendency-row__total {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--ink-soft);
-  text-align: right;
-}
-
-.tendency-bar {
-  display: flex;
-  height: 1.1rem;
-  border-radius: 2px;
-  overflow: hidden;
-  background: rgba(27, 43, 34, 0.06);
-}
-
-.tendency-bar__segment { display: block; height: 100%; }
-.tendency-bar__segment--home { background: var(--pitch); }
-.tendency-bar__segment--draw { background: var(--ink-soft); }
-.tendency-bar__segment--away { background: var(--terracotta); }
-
-.legend__swatch--home { background: var(--pitch); }
-.legend__swatch--draw { background: var(--ink-soft); }
-.legend__swatch--away { background: var(--terracotta); }
-
 .player-pills {
   display: flex;
   flex-wrap: wrap;
@@ -459,14 +431,23 @@ code {
 .player-pills--in-panel { padding: 1rem 1.4rem; }
 
 .back-link {
-  display: block;
-  padding: 0.9rem 1.4rem 0;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--ink-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  padding: 0.5rem 0.9rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--pitch-dark);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
 }
 
-.back-link:hover { color: var(--pitch); }
+.back-link:hover { border-color: var(--pitch); background: rgba(47, 107, 68, 0.06); }
+
+.back-link__arrow { font-size: 1.3rem; line-height: 1; }
 
 .player-pill {
   font-family: var(--font-mono);

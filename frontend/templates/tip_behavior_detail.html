@@ -2,10 +2,9 @@
 {% block title %}Tippverhalten {{ detail.display_name if detail else "" }} – Kicktipp Analytics{% endblock %}
 
 {% block content %}
+<a class="back-link" href="{{ url_for('tip_behavior_overview') }}"><span class="back-link__arrow">←</span> Zur Übersicht</a>
+
 <section class="panel">
-  <div class="panel__header-row">
-    <a class="back-link" href="{{ url_for('tip_behavior_overview') }}">← Zur Übersicht</a>
-  </div>
   <div class="player-pills player-pills--in-panel">
     {% for p in players %}
     <a class="player-pill {% if p.player_id == player_id %}is-active{% endif %}" href="{{ url_for('tip_behavior_detail', player_id=p.player_id) }}">{{ p.display_name }}</a>
@@ -43,6 +42,7 @@
     Spieltagen sind das noch erste Hinweise, keine gesicherten Muster.
   </p>
   {% if detail.team_bias %}
+  <div class="table-scroll">
   <table class="ranking-table">
     <thead>
       <tr><th>Team</th><th class="num-col">Schnitt-Tore</th><th class="num-col">Abweichung</th><th></th></tr>
@@ -61,6 +61,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p class="panel__hint" style="padding-bottom: 1.1rem;">Noch keine auffälligen Muster erkennbar.</p>
   {% endif %}

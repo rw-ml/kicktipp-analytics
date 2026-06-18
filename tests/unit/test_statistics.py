@@ -33,11 +33,11 @@ def test_hit_rate_and_misses():
     assert alice_stats.hit_rate == round(2 / 3, 4)
 
 
-def test_tendency_hits_are_broken_down_by_category():
+def test_tendency_hits_are_broken_down_by_win_and_draw():
     evaluations = [
-        make_eval("alice", "m1", 4, True, True),  # Heimsieg, exakt
-        make_eval("alice", "m2", 2, True, False),  # Remis, nur Tendenz
-        make_eval("alice", "m3", 3, True, False),  # Auswärtssieg, Tendenz+Tordifferenz
+        make_eval("alice", "m1", 4, True, True),  # Heimsieg -> zählt als Sieg
+        make_eval("alice", "m2", 2, True, False),  # Remis
+        make_eval("alice", "m3", 3, True, False),  # Auswärtssieg -> zählt ebenfalls als Sieg
         make_eval("alice", "m4", 0, False, False),  # falsche Tendenz, zählt nirgends
     ]
     match_to_tendency = {
@@ -49,9 +49,11 @@ def test_tendency_hits_are_broken_down_by_category():
     stats = StatisticsCalculator().calculate(evaluations, match_to_tendency)
     alice_stats = next(s for s in stats if s.player_id == "alice")
 
-    assert alice_stats.home_win_tips_correct == 1
+    # Heim- und Auswärtssieg fließen beide in dieselbe "Sieg"-Kategorie ein,
+    # da das bei einem Turnier auf neutralem Platz keine sinnvolle
+    # Unterscheidung ist.
+    assert alice_stats.win_tips_correct == 2
     assert alice_stats.draw_tips_correct == 1
-    assert alice_stats.away_win_tips_correct == 1
     assert alice_stats.tendency_hits == 3
 
 

@@ -75,11 +75,6 @@ def has_data() -> bool:
         return bool(count)
 
 
-def _player_count() -> int:
-    with get_engine().connect() as conn:
-        return conn.execute(select(func.count()).select_from(dim_player)).scalar() or 0
-
-
 def latest_matchday_number() -> int | None:
     with get_engine().connect() as conn:
         return conn.execute(select(func.max(dim_match.c.matchday_number))).scalar()
@@ -207,6 +202,27 @@ def rank_history_series() -> dict:
     return {"matchdays": sorted_matchdays, "players": series, "max_rank": max_rank}
 
 
+def _build_scale_ticks(max_count: int) -> list[dict]:
+    """
+    Lineal-Striche für die Tippverteilungs-Balken: ein dünner Strich für
+    jede ganze Zahl, ein dickerer für jeden 5er und ein noch dickerer für
+    jeden 10er - damit lässt sich die Anzahl der Tippspieler direkt am
+    Balken ablesen, auch wenn die Balkenlänge relativ zum häufigsten Tipp
+    in diesem Spiel skaliert ist (der häufigste Tipp füllt die Spalte fast
+    komplett aus).
+    """
+    ticks = []
+    for n in range(1, max_count + 1):
+        if n % 10 == 0:
+            thickness = "thick"
+        elif n % 5 == 0:
+            thickness = "medium"
+        else:
+            thickness = "thin"
+        ticks.append({"position_pct": round(n / max_count * 100, 2), "thickness": thickness})
+    return ticks
+
+
 def matchday_detail(matchday_number: int) -> dict:
     with get_engine().connect() as conn:
         home_team = dim_team.alias("home_team")
@@ -279,8 +295,10 @@ def matchday_detail(matchday_number: int) -> dict:
             ),
             key=lambda d: -d["count"],
         )
+        max_count = distribution_list[0]["count"] if distribution_list else 0
         for d in distribution_list:
             d["tier_class"] = points_tier_class(d["points"])
+            d["bar_pct"] = round(d["count"] / max_count * 100, 2) if max_count else 0
 
         matches.append(
             {
@@ -292,6 +310,7 @@ def matchday_detail(matchday_number: int) -> dict:
                 "actual_away_goals": m.actual_away_goals,
                 "kickoff": m.kickoff,
                 "tip_distribution": distribution_list,
+                "scale_ticks": _build_scale_ticks(max_count),
             }
         )
 
@@ -313,7 +332,6 @@ def matchday_detail(matchday_number: int) -> dict:
         "matches": matches,
         "points_this_matchday": points_this_matchday,
         "average_points_this_matchday": average_points_this_matchday,
-        "total_players": _player_count(),
     }
 
 
@@ -344,9 +362,8 @@ def statistics_table() -> list[dict]:
                 fact_player_statistics.c.total_tips,
                 fact_player_statistics.c.exact_hits,
                 fact_player_statistics.c.tendency_hits,
-                fact_player_statistics.c.home_win_tips_correct,
+                fact_player_statistics.c.win_tips_correct,
                 fact_player_statistics.c.draw_tips_correct,
-                fact_player_statistics.c.away_win_tips_correct,
                 fact_player_statistics.c.misses,
                 fact_player_statistics.c.hit_rate,
             )
@@ -373,8 +390,9 @@ def list_players() -> list[dict]:
 
 
 def _fetch_tips_with_team_context() -> list[dict]:
-    """Jeder Tipp inkl. der Teams, die in diesem Spiel aufeinandertrafen -
-    Grundlage für sämtliche Tippverhalten-Auswertungen."""
+    """Jeder Tipp inkl. der Teams, die in diesem Spiel aufeinandertrafen, und
+    dem tatsächlichen Ergebnis (falls schon gespielt) - Grundlage für
+    sämtliche Tippverhalten-Auswertungen."""
     home_team = dim_team.alias("home_team")
     away_team = dim_team.alias("away_team")
     with get_engine().connect() as conn:
@@ -387,6 +405,8 @@ def _fetch_tips_with_team_context() -> list[dict]:
                 fact_tip.c.tipped_away_goals,
                 dim_match.c.home_team_id,
                 dim_match.c.away_team_id,
+                dim_match.c.actual_home_goals,
+                dim_match.c.actual_away_goals,
                 home_team.c.name.label("home_team_name"),
                 away_team.c.name.label("away_team_name"),
             )
@@ -399,35 +419,58 @@ def _fetch_tips_with_team_context() -> list[dict]:
 
 
 def _compute_tendency_overview(tip_rows: list[dict]) -> list[dict]:
-    """Pro Spieler: Anteil Heimsieg-/Remis-/Auswärtssieg-Tipps. Reine Funktion
-    (keine DB-Zugriffe) - dadurch ohne Datenbank testbar."""
+    """
+    Pro Spieler: wie oft wurde auf eine Entscheidung (Sieg) bzw. ein
+    Unentschieden getippt, und wie oft lag der Tipp dabei richtig.
+
+    Heim- und Auswärtssieg fließen in eine gemeinsame "Sieg"-Kategorie ein
+    (bei einem Turnier auf neutralem Platz keine sinnvolle Trennung) - die
+    korrekte Seite muss für "richtig" aber natürlich trotzdem stimmen.
+    Nur bereits ausgewertete Spiele (mit bekanntem Ergebnis) zählen, sonst
+    würden offene Tipps die Trefferquote künstlich verwässern.
+    Reine Funktion (keine DB-Zugriffe) - dadurch ohne Datenbank testbar.
+    """
     by_player: dict[str, dict] = {}
     for t in tip_rows:
         entry = by_player.setdefault(
             t["player_id"],
-            {"display_name": t["display_name"], "home_win": 0, "draw": 0, "away_win": 0, "total": 0},
-        )
-        if t["tipped_home_goals"] > t["tipped_away_goals"]:
-            entry["home_win"] += 1
-        elif t["tipped_home_goals"] < t["tipped_away_goals"]:
-            entry["away_win"] += 1
-        else:
-            entry["draw"] += 1
-        entry["total"] += 1
-
-    overview = []
-    for player_id, e in by_player.items():
-        total = e["total"] or 1
-        overview.append(
             {
-                "player_id": player_id,
-                "display_name": e["display_name"],
-                "total": e["total"],
-                "home_win_pct": e["home_win"] / total * 100,
-                "draw_pct": e["draw"] / total * 100,
-                "away_win_pct": e["away_win"] / total * 100,
-            }
+                "display_name": t["display_name"],
+                "win_total": 0,
+                "win_correct": 0,
+                "draw_total": 0,
+                "draw_correct": 0,
+            },
         )
+        if t["actual_home_goals"] is None:
+            continue  # Spiel noch nicht gespielt - fließt nicht in die Quote ein
+
+        tipped_is_draw = t["tipped_home_goals"] == t["tipped_away_goals"]
+        actual_is_draw = t["actual_home_goals"] == t["actual_away_goals"]
+
+        if tipped_is_draw:
+            entry["draw_total"] += 1
+            if actual_is_draw:
+                entry["draw_correct"] += 1
+        else:
+            entry["win_total"] += 1
+            if not actual_is_draw:
+                tipped_home_wins = t["tipped_home_goals"] > t["tipped_away_goals"]
+                actual_home_wins = t["actual_home_goals"] > t["actual_away_goals"]
+                if tipped_home_wins == actual_home_wins:
+                    entry["win_correct"] += 1
+
+    overview = [
+        {
+            "player_id": player_id,
+            "display_name": e["display_name"],
+            "win_total": e["win_total"],
+            "win_correct": e["win_correct"],
+            "draw_total": e["draw_total"],
+            "draw_correct": e["draw_correct"],
+        }
+        for player_id, e in by_player.items()
+    ]
     overview.sort(key=lambda o: o["display_name"])
     return overview
 

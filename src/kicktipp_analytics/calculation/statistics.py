@@ -1,8 +1,15 @@
 """
 Leitet Performance-Kennzahlen pro Spieler aus den TipEvaluations ab:
 Trefferquote, Anzahl exakter Treffer, Anzahl Tendenz-Treffer (gesamt sowie
-aufgeschlüsselt nach Heimsieg/Remis/Auswärtssieg) und die Anzahl komplett
-daneben liegender Tipps (0 Punkte) - die Basis für den "Bremsfett-Pokal".
+aufgeschlüsselt nach Sieg/Unentschieden) und die Anzahl komplett daneben
+liegender Tipps (0 Punkte) - die Basis für den "Bremsfett-Pokal".
+
+Hinweis zur Sieg-Kategorie: Heimsieg und Auswärtssieg werden hier bewusst
+zu einer gemeinsamen "Sieg"-Kategorie zusammengefasst. Bei einem Turnier
+auf neutralem Platz (wie einer WM) ist "Heim/Auswärts" nur ein Artefakt
+der Tabellen-Reihenfolge, keine reale, bedeutungsvolle Unterscheidung -
+fachlich relevant ist nur, ob ein Spieler richtig auf eine Entscheidung
+(Sieg) oder ein Unentschieden getippt hat.
 """
 from __future__ import annotations
 
@@ -22,9 +29,8 @@ class PlayerStatistics:
     #: auch eine richtige Tendenz beinhaltet.
     tendency_hits: int
     #: Aufschlüsselung der Tendenz-Treffer nach tatsächlichem Spielausgang.
-    home_win_tips_correct: int
+    win_tips_correct: int
     draw_tips_correct: int
-    away_win_tips_correct: int
     misses: int
     hit_rate: float
 
@@ -44,9 +50,8 @@ class StatisticsCalculator:
             total = len(player_evals)
             exact = 0
             tendency = 0
-            home_win_correct = 0
+            win_correct = 0
             draw_correct = 0
-            away_win_correct = 0
             misses = 0
 
             for ev in player_evals:
@@ -56,12 +61,10 @@ class StatisticsCalculator:
                 if breakdown and breakdown.is_tendency_correct:
                     tendency += 1
                     actual_tendency = match_to_actual_tendency[ev.match_id]
-                    if actual_tendency == Tendency.HOME_WIN:
-                        home_win_correct += 1
-                    elif actual_tendency == Tendency.DRAW:
+                    if actual_tendency == Tendency.DRAW:
                         draw_correct += 1
                     else:
-                        away_win_correct += 1
+                        win_correct += 1
                 if ev.total_points == 0:
                     misses += 1
 
@@ -73,9 +76,8 @@ class StatisticsCalculator:
                     total_tips=total,
                     exact_hits=exact,
                     tendency_hits=tendency,
-                    home_win_tips_correct=home_win_correct,
+                    win_tips_correct=win_correct,
                     draw_tips_correct=draw_correct,
-                    away_win_tips_correct=away_win_correct,
                     misses=misses,
                     hit_rate=hit_rate,
                 )

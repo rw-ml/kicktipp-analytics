@@ -8,18 +8,12 @@
   <span class="legend__item"><span class="legend__swatch points-3"></span>3 (Tendenz + Tordifferenz)</span>
   <span class="legend__item"><span class="legend__swatch points-2"></span>2 (Tendenz)</span>
   <span class="legend__item"><span class="legend__swatch points-0"></span>0 (Falsche Tendenz)</span>
-</div>
-
-<div class="legend tip-scale-legend">
-  <span class="legend__label">Balkenlänge ({{ total_players }} Tippspieler insgesamt):</span>
-  <div class="tip-scale">
-    {% for n in range(1, total_players + 1) %}
-    <span class="tip-scale__tick" style="left: {{ (n / total_players * 100) | round(2) }}%">
-      <span class="tip-scale__tick-mark"></span>
-      <span class="tip-scale__tick-label">{{ n }}</span>
-    </span>
-    {% endfor %}
-  </div>
+  <span class="legend__item legend__item--ticks">
+    <span class="tick-sample tick-sample--thin"></span>1
+    <span class="tick-sample tick-sample--medium"></span>5
+    <span class="tick-sample tick-sample--thick"></span>10
+    Tippspieler
+  </span>
 </div>
 
 <section class="panel">
@@ -49,12 +43,18 @@
     {% if match.tip_distribution %}
     <div class="tip-distribution">
       {% for d in match.tip_distribution %}
-      <div class="tip-distribution__row">
-        <span class="tip-distribution__score {{ d.tier_class }}">{{ d.home_goals }}:{{ d.away_goals }}</span>
-        <span class="tip-distribution__bar-track">
-          <span class="tip-distribution__bar {{ d.tier_class }}" style="width: {{ (d.count / total_players * 100) | round(2) }}%"></span>
+      <div class="tip-distribution__row {% if d.is_actual %}is-actual{% endif %}">
+        <span class="tip-distribution__score {{ d.tier_class }}">
+          {{ d.home_goals }}:{{ d.away_goals }}
+          {% if d.is_actual %}<span class="result-flag">Ergebnis</span>{% endif %}
         </span>
-        <span class="tip-distribution__text">{{ d.players | join(', ') }} ({{ d.count }} Tippspieler){% if d.is_actual %} <span class="badge badge--winner">Ergebnis</span>{% endif %}</span>
+        <span class="tip-distribution__bar-track">
+          <span class="tip-distribution__bar {{ d.tier_class }}" style="width: {{ d.bar_pct }}%"></span>
+          {% for tick in match.scale_ticks %}
+          <span class="tip-distribution__tick tip-distribution__tick--{{ tick.thickness }}" style="left: {{ tick.position_pct }}%"></span>
+          {% endfor %}
+        </span>
+        <span class="tip-distribution__text">{{ d.players | join(', ') }} ({{ d.count }} Tippspieler)</span>
       </div>
       {% endfor %}
     </div>
@@ -68,6 +68,7 @@
     <h2 class="panel__title">Punkte an diesem Spieltag</h2>
     <span class="panel__stat">Ø {{ average_points_this_matchday }} Punkte</span>
   </div>
+  <div class="table-scroll">
   <table class="ranking-table">
     <thead>
       <tr><th>Spieler</th><th class="num-col">Punkte</th><th></th></tr>
@@ -82,5 +83,6 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </section>
 {% endblock %}

@@ -4,12 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="44139ec3-ac04-4b21-9501-ab34f552d12f" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/tests/unit/test_dashboard_logic.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/architecture.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/architecture.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app.py" afterDir="false" />
+    <list default="true" id="44139ec3-ac04-4b21-9501-ab34f552d12f" name="Changes" comment="updated UI">
       <change beforePath="$PROJECT_DIR$/frontend/data_access.py" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/data_access.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/static/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/static/style.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/templates/matchday.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/matchday.html" afterDir="false" />
@@ -17,12 +12,11 @@
       <change beforePath="$PROJECT_DIR$/frontend/templates/statistics.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/statistics.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/templates/tip_behavior_detail.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/tip_behavior_detail.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/templates/tip_behavior_overview.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/tip_behavior_overview.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sample.db" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/calculation/statistics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/calculation/statistics.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/persistence/schema.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/persistence/schema.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/persistence/sql_sink.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/persistence/sql_sink.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/pipeline/orchestrator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/pipeline/orchestrator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/integration/test_sql_sink.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/test_sql_sink.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/unit/test_dashboard_logic.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/unit/test_dashboard_logic.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/unit/test_statistics.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/unit/test_statistics.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -93,7 +87,20 @@
       <option name="presentableId" value="Default" />
       <updated>1781781541485</updated>
     </task>
+    <task id="LOCAL-00001" summary="updated UI">
+      <option name="closed" value="true" />
+      <created>1781799110279</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1781799110279</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="updated UI" />
+    <option name="LAST_COMMIT_MESSAGE" value="updated UI" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
