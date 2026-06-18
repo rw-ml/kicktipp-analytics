@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Statistiken – Kicktipp Analytics{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h2 class="panel__title">Performance-Kennzahlen</h2>
+  <table class="ranking-table">
+    <thead>
+      <tr>
+        <th class="rank-col">Rang</th>
+        <th>Spieler</th>
+        <th class="num-col">Tipps</th>
+        <th class="num-col">Exakt</th>
+        <th class="num-col">Tendenz</th>
+        <th class="num-col">Fehltipps</th>
+        <th class="num-col">Trefferquote</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in stats %}
+      <tr>
+        <td class="rank-col">{{ s.rank }}.</td>
+        <td class="player-col">{{ s.display_name }}</td>
+        <td class="num-col">{{ s.total_tips }}</td>
+        <td class="num-col">{{ s.exact_hits }}</td>
+        <td class="num-col">{{ s.tendency_hits }}</td>
+        <td class="num-col {% if s.is_bremsfett_leader %}is-bremsfett{% endif %}">{{ s.misses }}</td>
+        <td class="num-col">{{ (s.hit_rate * 100) | round(0, 'floor') }}&nbsp;%</td>
+        <td>{% if s.is_bremsfett_leader %}<span class="badge badge--bremsfett">Bremsfett-Pokal</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

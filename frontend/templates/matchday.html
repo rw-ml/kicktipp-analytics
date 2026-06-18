@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Spieltag {{ matchday_number }} – Kicktipp Analytics{% endblock %}
+
+{% block content %}
+<div class="legend">
+  <span class="legend__label">Punkte:</span>
+  <span class="legend__item"><span class="legend__swatch points-4"></span>4 (Exakt)</span>
+  <span class="legend__item"><span class="legend__swatch points-3"></span>3 (Tendenz + Tordifferenz)</span>
+  <span class="legend__item"><span class="legend__swatch points-2"></span>2 (Tendenz)</span>
+  <span class="legend__item"><span class="legend__swatch points-0"></span>0 (Falsche Tendenz)</span>
+</div>
+
+<section class="panel">
+  <div class="panel__header-row">
+    <h2 class="panel__title">Spieltag {{ matchday_number }}</h2>
+    <div class="matchday-nav">
+      {% for n in available_matchdays %}
+        <a class="matchday-nav__item {% if n == matchday_number %}is-active{% endif %}" href="{{ url_for('matchday', matchday_number=n) }}">{{ n }}</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% for match in matches %}
+  <article class="match">
+    <header class="match__header">
+      <span class="match__teams">{{ match.home_name }} – {{ match.away_name }}</span>
+      {% if match.match_type == "knockout" %}<span class="badge badge--knockout">K.o.</span>{% endif %}
+      <span class="match__score">
+        {% if match.actual_home_goals is not none %}
+          {{ match.actual_home_goals }}:{{ match.actual_away_goals }}
+        {% else %}
+          noch nicht gespielt
+        {% endif %}
+      </span>
+    </header>
+
+    {% if match.tip_distribution %}
+    <div class="tip-distribution">
+      {% set max_count = match.tip_distribution[0].count %}
+      {% for d in match.tip_distribution %}
+      <div class="tip-distribution__row">
+        <span class="tip-distribution__score {{ d.tier_class }}">{{ d.home_goals }}:{{ d.away_goals }}</span>
+        <span class="tip-distribution__bar-track">
+          <span class="tip-distribution__bar {{ d.tier_class }}" style="width: {{ (d.count / max_count * 100) | round(0, 'floor') }}%"></span>
+        </span>
+        <span class="tip-distribution__text">{{ d.players | join(', ') }} ({{ d.count }} Tippspieler)</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <h2 class="panel__title">Punkte an diesem Spieltag</h2>
+  <table class="ranking-table">
+    <thead>
+      <tr><th>Spieler</th><th class="num-col">Punkte</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in points_this_matchday %}
+      <tr>
+        <td class="player-col">{{ p.display_name }}</td>
+        <td class="num-col points-col">{{ p.points }}</td>
+        <td>{% if p.is_matchday_winner %}<span class="badge badge--winner">Spieltagssieger</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

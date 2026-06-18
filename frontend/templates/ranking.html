@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Bestenliste – Kicktipp Analytics{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h2 class="panel__title">Bestenliste</h2>
+  <table class="ranking-table">
+    <thead>
+      <tr>
+        <th class="rank-col">Rang</th>
+        <th></th>
+        <th>Spieler</th>
+        <th class="num-col">Punkte</th>
+        <th class="num-col">Siege</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in ranking %}
+      <tr class="rank-{{ entry.rank if entry.rank <= 3 else 'other' }}">
+        <td class="rank-col"><span class="rank-number">{{ entry.rank }}</span></td>
+        <td class="trend-col">
+          {% if entry.trend == 'auf' %}<span class="trend trend--up" title="Im Ranking aufgestiegen">▲</span>
+          {% elif entry.trend == 'ab' %}<span class="trend trend--down" title="Im Ranking abgestiegen">▼</span>
+          {% elif entry.trend == 'neu' %}<span class="trend trend--new" title="Neu in der Wertung">neu</span>
+          {% else %}<span class="trend trend--flat" title="Unverändert">–</span>{% endif %}
+        </td>
+        <td class="player-col">{{ entry.display_name }}</td>
+        <td class="num-col points-col">{{ entry.points }}</td>
+        <td class="num-col">{{ entry.matchday_wins }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h2 class="panel__title">Formkurve</h2>
+  <p class="panel__hint">Kumulierte Punkte je Spieltag.</p>
+  <div class="chart-container">
+    <canvas id="formkurve"></canvas>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  const matchdays = {{ formkurve.matchdays | tojson }};
+  const players = {{ formkurve.players | tojson }};
+  const palette = ["#2F6B44", "#C8962C", "#B23A2E", "#3A5A78", "#7A5C9E", "#8A7F5C"];
+
+  const datasets = Object.entries(players).map(([playerId, info], index) => ({
+    label: info.display_name,
+    data: matchdays.map((md) => info.points_by_matchday[md] ?? null),
+    borderColor: palette[index % palette.length],
+    backgroundColor: palette[index % palette.length],
+    spanGaps: true,
+    tension: 0.15,
+    pointRadius: 4,
+    borderWidth: 2,
+  }));
+
+  new Chart(document.getElementById("formkurve"), {
+    type: "line",
+    data: {
+      labels: matchdays.map((md) => "Spieltag " + md),
+      datasets: datasets,
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { font: { family: "IBM Plex Sans" } } },
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { font: { family: "IBM Plex Mono" } } },
+        x: { ticks: { font: { family: "IBM Plex Sans" } } },
+      },
+    },
+  });
+</script>
+{% endblock %}

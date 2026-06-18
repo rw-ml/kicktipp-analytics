@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Tippverhalten {{ detail.display_name if detail else "" }} – Kicktipp Analytics{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="player-pills player-pills--in-panel">
+    {% for p in players %}
+    <a class="player-pill {% if p.player_id == player_id %}is-active{% endif %}" href="{{ url_for('tip_behavior_detail', player_id=p.player_id) }}">{{ p.display_name }}</a>
+    {% endfor %}
+  </div>
+</section>
+
+{% if not detail %}
+<section class="panel">
+  <p class="panel__hint" style="padding: 1.1rem 1.4rem;">Noch keine Tipps für diesen Spieler vorhanden.</p>
+</section>
+{% else %}
+
+<section class="panel">
+  <h2 class="panel__title">Häufigste Tipps von {{ detail.display_name }}</h2>
+  <p class="panel__hint">{{ detail.total_tips }} Tipps insgesamt, im Schnitt {{ detail.global_average_goals }} Tore pro getipptem Team.</p>
+  <div class="scoreline-list">
+    {% for s in detail.top_scorelines %}
+    <div class="scoreline-row">
+      <span class="scoreline-row__score">{{ s.home_goals }}:{{ s.away_goals }}</span>
+      <span class="tip-distribution__bar-track">
+        <span class="tip-distribution__bar" style="width: {{ s.pct }}%; background: var(--pitch);"></span>
+      </span>
+      <span class="scoreline-row__pct">{{ s.pct }}&nbsp;% ({{ s.count }}&times;)</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <h2 class="panel__title">Auffällige Team-Tendenzen</h2>
+  <p class="panel__hint">
+    Teams, bei denen {{ detail.display_name }} deutlich mehr oder weniger Tore tippt als im eigenen Schnitt
+    ({{ detail.global_average_goals }}). Erst ab mindestens zwei Tipps für ein Team berücksichtigt - bei wenigen
+    Spieltagen sind das noch erste Hinweise, keine gesicherten Muster.
+  </p>
+  {% if detail.team_bias %}
+  <table class="ranking-table">
+    <thead>
+      <tr><th>Team</th><th class="num-col">Schnitt-Tore</th><th class="num-col">Abweichung</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for b in detail.team_bias %}
+      <tr>
+        <td class="player-col">{{ b.team_name }}</td>
+        <td class="num-col">{{ b.average_goals }}</td>
+        <td class="num-col {% if b.direction == 'favorit' %}is-bias-positive{% else %}is-bias-negative{% endif %}">{{ "+%.1f"|format(b.bias) if b.bias > 0 else b.bias }}</td>
+        <td>
+          {% if b.direction == 'favorit' %}<span class="badge badge--winner">Sieht als Favorit</span>
+          {% else %}<span class="badge badge--bremsfett">Sieht als Außenseiter</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="panel__hint" style="padding-bottom: 1.1rem;">Noch keine auffälligen Muster erkennbar.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

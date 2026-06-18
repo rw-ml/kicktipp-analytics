@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Tippverhalten – Kicktipp Analytics{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h2 class="panel__title">Tendenz-Verteilung im Vergleich</h2>
+  <p class="panel__hint">Anteil der Tipps auf Heimsieg, Unentschieden und Auswärtssieg, je Spieler.</p>
+
+  <div class="tendency-overview">
+    {% for o in overview %}
+    <a class="tendency-row" href="{{ url_for('tip_behavior_detail', player_id=o.player_id) }}">
+      <span class="tendency-row__name">{{ o.display_name }}</span>
+      <span class="tendency-bar">
+        <span class="tendency-bar__segment tendency-bar__segment--home" style="width: {{ o.home_win_pct }}%" title="Heimsieg: {{ o.home_win_pct | round(0, 'floor') }}%"></span>
+        <span class="tendency-bar__segment tendency-bar__segment--draw" style="width: {{ o.draw_pct }}%" title="Unentschieden: {{ o.draw_pct | round(0, 'floor') }}%"></span>
+        <span class="tendency-bar__segment tendency-bar__segment--away" style="width: {{ o.away_win_pct }}%" title="Auswärtssieg: {{ o.away_win_pct | round(0, 'floor') }}%"></span>
+      </span>
+      <span class="tendency-row__total">{{ o.total }} Tipps</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="legend">
+    <span class="legend__label">Tendenz:</span>
+    <span class="legend__item"><span class="legend__swatch legend__swatch--home"></span>Heimsieg</span>
+    <span class="legend__item"><span class="legend__swatch legend__swatch--draw"></span>Unentschieden</span>
+    <span class="legend__item"><span class="legend__swatch legend__swatch--away"></span>Auswärtssieg</span>
+  </div>
+</section>
+
+<section class="panel">
+  <h2 class="panel__title">Spieler im Detail</h2>
+  <p class="panel__hint">Auswählen, um Lieblingsergebnisse und Team-Vorlieben einzelner Tippspieler zu sehen.</p>
+  <div class="player-pills">
+    {% for p in players %}
+    <a class="player-pill" href="{{ url_for('tip_behavior_detail', player_id=p.player_id) }}">{{ p.display_name }}</a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
