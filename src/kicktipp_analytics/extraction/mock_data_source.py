@@ -26,7 +26,7 @@ from kicktipp_analytics.domain.models import (
     Team,
     Tip,
 )
-from kicktipp_analytics.extraction.interfaces import IKicktippDataSource
+from kicktipp_analytics.extraction.interfaces import IKicktippDataSource, ScrapedData
 
 _TEAMS = {
     "adlerstadt": Team(id="adlerstadt", name="Adlerstadt", short_name="ADL"),
@@ -128,3 +128,11 @@ class MockKicktippDataSource(IKicktippDataSource):
     def get_tips(self, season: str) -> list[Tip]:
         match_ids = {m.id for m in self._matches if m.matchday.season == season}
         return [t for t in self._tips if t.match_id in match_ids]
+
+    def scrape_all(self, season: str) -> ScrapedData:
+        return ScrapedData(
+            players=self.get_players(),
+            matches=self.get_matches(season),
+            results=self.get_results(season),
+            tips=self.get_tips(season),
+        )

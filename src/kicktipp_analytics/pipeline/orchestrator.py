@@ -35,10 +35,11 @@ class PipelineOrchestrator:
         self._season = season
 
     def run(self) -> None:
-        players = self._source.get_players()
-        matches = self._source.get_matches(self._season)
-        results = self._source.get_results(self._season)
-        tips = self._source.get_tips(self._season)
+        data = self._source.scrape_all(self._season)
+        players = data.players
+        matches = data.matches
+        results = data.results
+        tips = data.tips
 
         match_by_id = {m.id: m for m in matches}
         result_by_match = {r.match_id: r for r in results}

@@ -13,7 +13,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
 
-cp .env.example .env
+cp .env .env
 # .env mit echten Kicktipp-Zugangsdaten und DB-/CSV-Konfiguration befüllen
 ```
 
@@ -125,8 +125,14 @@ docs/             Architektur-Dokumentation
   historisiert wird - jeder Lauf schreibt die Fakten-Tabellen komplett neu).
 
 - Scraper-Selektoren (`KicktippSelectors`, `KicktippAuthenticator`) sind
-  unverifiziert, da aus der Entwicklungsumgebung kein Zugriff auf
-  kicktipp.de möglich war - vor dem ersten Produktivlauf gegen die echte
-  Seite prüfen.
+  gegen reale Kicktipp-Seitenstrukturen recherchiert (öffentliche
+  Tippübersicht-Seite + Quellcode-Abgleich mit mehreren aktiv gepflegten
+  Open-Source-Kicktipp-Bots) und größtenteils verifiziert - siehe den
+  ausführlichen Stand-der-Verifizierung-Block am Anfang von
+  `kicktipp_scraper.py`. Offen ist noch die exakte HTML-Struktur einzelner
+  Tippübersicht-Zellen, wenn Tipp und Punkte-Badge ohne Trennzeichen direkt
+  hintereinander stehen (z.B. Rohtext "3:03"). Dafür gibt es
+  `scripts/inspect_tip_cell.py` - einmal mit echten Zugangsdaten laufen
+  lassen, dann lässt sich `_extract_tip_score` final fixen.
 - K.o.-Phasen-Erkennung in `KicktippScraper.get_matches` ist als TODO
   markiert.

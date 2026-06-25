@@ -5,19 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="44139ec3-ac04-4b21-9501-ab34f552d12f" name="Changes" comment="updated UI">
+      <change afterPath="$PROJECT_DIR$/scripts/inspect_tip_cell.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/architecture.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/architecture.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/data_access.py" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/data_access.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/static/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/static/style.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/templates/matchday.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/matchday.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/base.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/templates/ranking.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/ranking.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/templates/statistics.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/statistics.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/templates/tip_behavior_detail.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/tip_behavior_detail.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/templates/tip_behavior_overview.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/templates/tip_behavior_overview.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/calculation/statistics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/calculation/statistics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/persistence/schema.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/persistence/schema.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/persistence/sql_sink.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/persistence/sql_sink.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/integration/test_sql_sink.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/test_sql_sink.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/unit/test_dashboard_logic.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/unit/test_dashboard_logic.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/unit/test_statistics.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/unit/test_statistics.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/extraction/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/extraction/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/extraction/interfaces.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/extraction/interfaces.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/extraction/kicktipp_scraper.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/extraction/kicktipp_scraper.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/extraction/mock_data_source.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/extraction/mock_data_source.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/kicktipp_analytics/pipeline/orchestrator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/kicktipp_analytics/pipeline/orchestrator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/integration/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/README.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,37 +40,46 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "rw-ml"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;rw-ml&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/rw-ml/kicktipp-analytics.git",
-    "accountId": "cd37f253-eccf-4b4d-b90c-714b581b9099"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/rw-ml/kicktipp-analytics.git&quot;,
+    &quot;accountId&quot;: &quot;9358c0ad-0154-423f-805f-5aeb2d8982b3&quot;
   }
-}]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 4
-}]]></component>
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
   <component name="ProjectId" id="3FJ7uZLtEPIXMJGxSvteqR0xN6R" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "DefaultHtmlFileTemplate": "HTML File",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "git-widget-placeholder": "master",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "D:/PyCharmProjects/kicktipp-analytics"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/robin/Documents/kicktipp-analytics&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\PyCharmProjects\kicktipp-analytics" />
@@ -75,7 +89,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-4e2b1448bda8-9a97661f3031-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.27397.106" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-PY-261.25134.203" />
+        <option value="bundled-python-sdk-245168a56dbd-c2ffad84badb-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.25134.203" />
       </set>
     </attachedChunks>
   </component>
@@ -86,6 +101,8 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1781781541485</updated>
+      <workItem from="1782307535350" duration="5678000" />
+      <workItem from="1782394121073" duration="344000" />
     </task>
     <task id="LOCAL-00001" summary="updated UI">
       <option name="closed" value="true" />
@@ -97,6 +114,9 @@
     </task>
     <option name="localTasksCounter" value="2" />
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="updated UI" />

@@ -23,6 +23,14 @@ from pathlib import Path
 # src-Package vorher installiert oder PYTHONPATH manuell gesetzt werden muss.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+# .env automatisch laden (SQL_CONNECTION_URL, SEASON etc.) - damit
+# funktioniert "python frontend/app.py" direkt ohne manuelle env-Exporte.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass  # python-dotenv nicht installiert - env-Variablen müssen manuell gesetzt sein
+
 from flask import Flask, abort, redirect, render_template, url_for  # noqa: E402
 
 import data_access  # noqa: E402

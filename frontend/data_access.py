@@ -485,7 +485,7 @@ def tip_behavior_overview() -> list[dict]:
 _MIN_TEAM_APPEARANCES = 2
 #: Ab dieser Abweichung (in Toren) vom eigenen Schnitt gilt ein Team als
 #: auffällig bevorzugt/benachteiligt getippt.
-_BIAS_THRESHOLD = 0.5
+_BIAS_THRESHOLD = 1.5
 
 
 def _compute_player_detail(tip_rows: list[dict], player_id: str) -> dict | None:

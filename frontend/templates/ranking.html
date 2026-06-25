@@ -2,38 +2,24 @@
 {% block title %}Bestenliste – Kicktipp Analytics{% endblock %}
 
 {% block content %}
-<section class="panel">
-  <h2 class="panel__title">Bestenliste</h2>
-  <div class="table-scroll">
-  <table class="ranking-table">
-    <thead>
-      <tr>
-        <th class="rank-col">Rang</th>
-        <th></th>
-        <th>Spieler</th>
-        <th class="num-col">Punkte</th>
-        <th class="num-col">Ø / Spieltag</th>
-        <th class="num-col">Siege</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for entry in ranking %}
-      <tr class="rank-{{ entry.rank if entry.rank <= 3 else 'other' }}">
-        <td class="rank-col"><span class="rank-number">{{ entry.rank }}</span></td>
-        <td class="trend-col">
-          {% if entry.trend == 'auf' %}<span class="trend trend--up" title="Im Ranking aufgestiegen">▲</span>
-          {% elif entry.trend == 'ab' %}<span class="trend trend--down" title="Im Ranking abgestiegen">▼</span>
-          {% elif entry.trend == 'neu' %}<span class="trend trend--new" title="Neu in der Wertung">neu</span>
-          {% else %}<span class="trend trend--flat" title="Unverändert">–</span>{% endif %}
-        </td>
-        <td class="player-col">{{ entry.display_name }}</td>
-        <td class="num-col points-col">{{ entry.points }}</td>
-        <td class="num-col">{{ entry.average_points_per_matchday }}</td>
-        <td class="num-col">{{ entry.matchday_wins }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+{# Spielerauswahl – über beiden Charts, steuert beide gleichzeitig #}
+<section class="panel player-select-panel">
+  <h2 class="panel__title">Spieler</h2>
+  <div class="player-select__actions">
+    <button class="btn-filter" onclick="selectAll(true)">Alle</button>
+    <button class="btn-filter" onclick="selectAll(false)">Keine</button>
+  </div>
+  <div class="player-select__pills" id="playerPills">
+    {% for player_id, info in formkurve.players.items() %}
+    <button
+      class="player-toggle is-active"
+      data-index="{{ loop.index0 }}"
+      onclick="togglePlayer({{ loop.index0 }}, this)">
+      <span class="player-dot" id="dot-{{ loop.index0 }}"></span>
+      {{ info.display_name }}
+    </button>
+    {% endfor %}
   </div>
 </section>
 
@@ -53,70 +39,150 @@
   </div>
 </section>
 
+<section class="panel">
+  <h2 class="panel__title">Bestenliste</h2>
+  <div class="table-scroll">
+    <table class="ranking-table sortable-table" id="rankingTable">
+      <thead>
+        <tr>
+          <th class="rank-col">Rang</th>
+          <th></th>
+          <th data-col="text">Spieler</th>
+          <th class="num-col" data-col="num">Punkte</th>
+          <th class="num-col" data-col="num">Ø&nbsp;/&nbsp;Spieltag</th>
+          <th class="num-col" data-col="num">Siege</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if ranking %}
+          {% for entry in ranking %}
+          <tr>
+            <td class="rank-col"><span class="rank-number">{{ entry.rank }}</span></td>
+            <td class="trend-col">
+              {% if entry.trend == 'auf' %}<span class="trend trend--up">▲</span>
+              {% elif entry.trend == 'ab' %}<span class="trend trend--down">▼</span>
+              {% elif entry.trend == 'neu' %}<span class="trend trend--new">neu</span>
+              {% else %}<span class="trend trend--flat">–</span>{% endif %}
+            </td>
+            <td class="player-col">{{ entry.display_name }}</td>
+            <td class="num-col points-col" data-value="{{ entry.points }}">{{ entry.points }}</td>
+            <td class="num-col" data-value="{{ entry.average_points_per_matchday }}">{{ entry.average_points_per_matchday }}</td>
+            <td class="num-col" data-value="{{ entry.matchday_wins }}">{{ entry.matchday_wins }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          {% for player_id, info in formkurve.players.items() %}
+          <tr>
+            <td class="rank-col"></td>
+            <td class="trend-col"></td>
+            <td class="player-col">{{ info.display_name }}</td>
+            <td class="num-col points-col" data-value="">–</td>
+            <td class="num-col" data-value="">–</td>
+            <td class="num-col" data-value="">–</td>
+          </tr>
+          {% endfor %}
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-  const palette = ["#2F6B44", "#C8962C", "#B23A2E", "#3A5A78", "#7A5C9E", "#8A7F5C"];
+const palette = [
+  "#2F6B44","#C8962C","#B23A2E","#3A5A78","#7A5C9E","#5C8A7A",
+  "#1E8C3A","#D06420","#2070B0","#9C1D10","#4A3A85","#A08020",
+  "#38A450","#C01880","#0A5898","#841010","#5898C8","#C87858",
+  "#484848","#2860B8","#B83030","#A84890","#68A838","#883050"
+];
 
-  const matchdays = {{ formkurve.matchdays | tojson }};
-  const players = {{ formkurve.players | tojson }};
+// Farben auf die Pills anwenden
+document.querySelectorAll(".player-dot").forEach((dot, i) => {
+  dot.style.background = palette[i % palette.length];
+});
+document.querySelectorAll(".player-toggle").forEach((btn, i) => {
+  btn.style.setProperty("--pill-color", palette[i % palette.length]);
+});
 
-  const pointsDatasets = Object.entries(players).map(([playerId, info], index) => ({
-    label: info.display_name,
-    data: matchdays.map((md) => info.points_by_matchday[md] ?? null),
-    borderColor: palette[index % palette.length],
-    backgroundColor: palette[index % palette.length],
-    spanGaps: true,
-    tension: 0.15,
-    pointRadius: 4,
-    borderWidth: 2,
-  }));
+const matchdays = {{ formkurve.matchdays | tojson }};
+const players   = {{ formkurve.players   | tojson }};
 
-  new Chart(document.getElementById("formkurve"), {
-    type: "line",
-    data: { labels: matchdays.map((md) => "Spieltag " + md), datasets: pointsDatasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom", labels: { font: { family: "IBM Plex Sans" } } } },
-      scales: {
-        y: { beginAtZero: true, ticks: { font: { family: "IBM Plex Mono" } } },
-        x: { ticks: { font: { family: "IBM Plex Sans" } } },
-      },
+const pointsDatasets = Object.entries(players).map(([, info], i) => ({
+  label: info.display_name,
+  data: matchdays.map(md => info.points_by_matchday[md] ?? null),
+  borderColor: palette[i % palette.length],
+  backgroundColor: palette[i % palette.length],
+  spanGaps: true, tension: 0.15, pointRadius: 3, borderWidth: 2,
+}));
+
+const formkurveChart = new Chart(document.getElementById("formkurve"), {
+  type: "line",
+  data: { labels: matchdays.map(md => "Spieltag " + md), datasets: pointsDatasets },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { font: { family: "IBM Plex Mono" } } },
+      x: { ticks: { font: { family: "IBM Plex Sans" } } },
     },
-  });
+  },
+});
 
-  const rankMatchdays = {{ rank_history.matchdays | tojson }};
-  const rankPlayers = {{ rank_history.players | tojson }};
-  const maxRank = {{ rank_history.max_rank | tojson }};
+const rankMatchdays = {{ rank_history.matchdays | tojson }};
+const rankPlayers  = {{ rank_history.players   | tojson }};
+const maxRank      = {{ rank_history.max_rank  | tojson }};
 
-  const rankDatasets = Object.entries(rankPlayers).map(([playerId, info], index) => ({
-    label: info.display_name,
-    data: rankMatchdays.map((md) => info.rank_by_matchday[md] ?? null),
-    borderColor: palette[index % palette.length],
-    backgroundColor: palette[index % palette.length],
-    spanGaps: true,
-    tension: 0.15,
-    pointRadius: 4,
-    borderWidth: 2,
-  }));
+const rankDatasets = Object.entries(rankPlayers).map(([, info], i) => ({
+  label: info.display_name,
+  data: rankMatchdays.map(md => info.rank_by_matchday[md] ?? null),
+  borderColor: palette[i % palette.length],
+  backgroundColor: palette[i % palette.length],
+  spanGaps: true, tension: 0.15, pointRadius: 3, borderWidth: 2,
+}));
 
-  new Chart(document.getElementById("rankHistory"), {
-    type: "line",
-    data: { labels: rankMatchdays.map((md) => "Spieltag " + md), datasets: rankDatasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom", labels: { font: { family: "IBM Plex Sans" } } } },
-      scales: {
-        y: {
-          reverse: true,
-          min: 1,
-          max: maxRank,
-          ticks: { stepSize: 1, font: { family: "IBM Plex Mono" } },
+const rankHistoryChart = new Chart(document.getElementById("rankHistory"), {
+  type: "line",
+  data: { labels: rankMatchdays.map(md => "Spieltag " + md), datasets: rankDatasets },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: {
+        reverse: true,
+        min: 0.5,
+        max: maxRank + 0.5,
+        ticks: {
+          stepSize: 1,
+          callback: v => Number.isInteger(v) ? v : undefined,
+          font: { family: "IBM Plex Mono" },
         },
-        x: { ticks: { font: { family: "IBM Plex Sans" } } },
       },
+      x: { ticks: { font: { family: "IBM Plex Sans" } } },
     },
+  },
+});
+
+function togglePlayer(index, btn) {
+  const visible = !btn.classList.contains("is-active");
+  btn.classList.toggle("is-active", visible);
+  formkurveChart.setDatasetVisibility(index, visible);
+  rankHistoryChart.setDatasetVisibility(index, visible);
+  formkurveChart.update();
+  rankHistoryChart.update();
+}
+
+function selectAll(visible) {
+  document.querySelectorAll(".player-toggle").forEach((btn, i) => {
+    btn.classList.toggle("is-active", visible);
+    formkurveChart.setDatasetVisibility(i, visible);
+    rankHistoryChart.setDatasetVisibility(i, visible);
   });
+  formkurveChart.update();
+  rankHistoryChart.update();
+}
+
+makeSortable("rankingTable");
 </script>
 {% endblock %}

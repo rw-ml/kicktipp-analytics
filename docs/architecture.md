@@ -34,10 +34,14 @@ versteckt: Sollte sich das Datenzugriffsmodell ändern, wird nur eine neue
 Implementierung registriert, der Rest der Pipeline bleibt unverändert.
 
 **Wichtig:** Die CSS-Selektoren in `KicktippSelectors` und
-`KicktippAuthenticator` sind ein fachlich plausibler, aber unverifizierter
-Entwurf - die Entwicklungsumgebung hatte keinen Netzwerkzugriff auf
-kicktipp.de. Vor dem ersten produktiven Lauf bitte gegen die echte
-Login-/Tippübersichtsseite der Liga prüfen (siehe `tests/integration/README.md`).
+`KicktippAuthenticator` sind gegen reale Kicktipp-Seitenstrukturen
+recherchiert (öffentlich einsehbare Tippübersicht-Seite + Quellcode-Abgleich
+mit mehreren aktiv gepflegten Open-Source-Kicktipp-Bots) und größtenteils
+verifiziert. Offen ist noch die exakte HTML-Struktur einzelner
+Tippübersicht-Zellen, wenn Tipp und Punkte-Badge ohne Trennzeichen direkt
+hintereinander stehen - siehe den Stand-der-Verifizierung-Block am Anfang
+von `kicktipp_scraper.py` sowie `scripts/inspect_tip_cell.py` und
+`tests/integration/README.md`.
 
 ## Punkteregeln der Liga
 

@@ -15,9 +15,21 @@ Calculation, Persistence und Pipeline bleiben unverändert
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from kicktipp_analytics.domain.models import Match, MatchResult, Player, Tip
+
+
+@dataclass
+class ScrapedData:
+    """Alle Rohdaten eines Pipeline-Laufs in einer Struktur.
+    Ermöglicht es, alles in einer einzigen Browser-Session zu sammeln.
+    """
+    players: list[Player] = field(default_factory=list)
+    matches: list[Match] = field(default_factory=list)
+    results: list[MatchResult] = field(default_factory=list)
+    tips: list[Tip] = field(default_factory=list)
 
 
 class IKicktippDataSource(Protocol):
@@ -28,3 +40,15 @@ class IKicktippDataSource(Protocol):
     def get_results(self, season: str) -> list[MatchResult]: ...
 
     def get_tips(self, season: str) -> list[Tip]: ...
+
+    def scrape_all(self, season: str) -> ScrapedData:
+        """Alle Daten in einem Zug holen (eine Browser-Session).
+        Default-Implementierung ruft die Einzelmethoden auf - Scraper
+        überschreiben das für eine einzige Session.
+        """
+        return ScrapedData(
+            players=self.get_players(),
+            matches=self.get_matches(season),
+            results=self.get_results(season),
+            tips=self.get_tips(season),
+        )

@@ -5,18 +5,18 @@
 <section class="panel">
   <h2 class="panel__title">Performance-Kennzahlen</h2>
   <div class="table-scroll">
-    <table class="ranking-table">
+    <table class="ranking-table sortable-table" id="statsTable">
       <thead>
         <tr>
           <th class="rank-col">Rang</th>
-          <th>Spieler</th>
-          <th class="num-col">Tipps</th>
-          <th class="num-col">Exakt</th>
-          <th class="num-col">Tendenz gesamt</th>
-          <th class="num-col">davon Sieg</th>
-          <th class="num-col">davon Unentschieden</th>
-          <th class="num-col">Fehltipps</th>
-          <th class="num-col">Trefferquote</th>
+          <th data-col="text">Spieler</th>
+          <th class="num-col" data-col="num">Tipps</th>
+          <th class="num-col" data-col="num">Exakt</th>
+          <th class="num-col" data-col="num">Korrekte Tendenz</th>
+          <th class="num-col" data-col="num">davon Sieg</th>
+          <th class="num-col" data-col="num">davon Unentschieden</th>
+          <th class="num-col" data-col="num">Fehltipps</th>
+          <th class="num-col" data-col="num">Trefferquote</th>
           <th></th>
         </tr>
       </thead>
@@ -25,13 +25,13 @@
         <tr>
           <td class="rank-col">{{ s.rank }}.</td>
           <td class="player-col">{{ s.display_name }}</td>
-          <td class="num-col">{{ s.total_tips }}</td>
-          <td class="num-col">{{ s.exact_hits }}</td>
-          <td class="num-col">{{ s.tendency_hits }}</td>
-          <td class="num-col">{{ s.win_tips_correct }}</td>
-          <td class="num-col">{{ s.draw_tips_correct }}</td>
-          <td class="num-col {% if s.is_bremsfett_leader %}is-bremsfett{% endif %}">{{ s.misses }}</td>
-          <td class="num-col">{{ (s.hit_rate * 100) | round(0, 'floor') }}&nbsp;%</td>
+          <td class="num-col" data-value="{{ s.total_tips }}">{{ s.total_tips }}</td>
+          <td class="num-col" data-value="{{ s.exact_hits }}">{{ s.exact_hits }}</td>
+          <td class="num-col" data-value="{{ s.tendency_hits }}">{{ s.tendency_hits }}</td>
+          <td class="num-col" data-value="{{ s.win_tips_correct }}">{{ s.win_tips_correct }}</td>
+          <td class="num-col" data-value="{{ s.draw_tips_correct }}">{{ s.draw_tips_correct }}</td>
+          <td class="num-col {% if s.is_bremsfett_leader %}is-bremsfett{% endif %}" data-value="{{ s.misses }}">{{ s.misses }}</td>
+          <td class="num-col" data-value="{{ s.hit_rate }}">{{ (s.hit_rate * 100) | round(0, 'floor') }}&nbsp;%</td>
           <td>{% if s.is_bremsfett_leader %}<span class="badge badge--bremsfett">Bremsfett-Pokal</span>{% endif %}</td>
         </tr>
         {% endfor %}
@@ -39,4 +39,8 @@
     </table>
   </div>
 </section>
+
+<script>
+makeSortable("statsTable");
+</script>
 {% endblock %}

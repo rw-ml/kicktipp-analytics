@@ -8,6 +8,35 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+  // Global verfügbar für alle Seiten - muss im head vor dem Content stehen
+  function makeSortable(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    let sortCol = -1, sortDir = 1;
+    table.querySelectorAll("thead th[data-col]").forEach(th => {
+      const colIndex = Array.from(th.parentElement.children).indexOf(th);
+      th.classList.add("sortable-col");
+      th.addEventListener("click", () => {
+        if (sortCol === colIndex) sortDir *= -1;
+        else { sortCol = colIndex; sortDir = 1; }
+        const tbody = table.querySelector("tbody");
+        Array.from(tbody.querySelectorAll("tr"))
+          .sort((a, b) => {
+            const aRaw = a.cells[colIndex]?.dataset?.value ?? a.cells[colIndex]?.textContent?.trim() ?? "";
+            const bRaw = b.cells[colIndex]?.dataset?.value ?? b.cells[colIndex]?.textContent?.trim() ?? "";
+            const aNum = parseFloat(aRaw.replace(",", "."));
+            const bNum = parseFloat(bRaw.replace(",", "."));
+            if (!isNaN(aNum) && !isNaN(bNum)) return (aNum - bNum) * sortDir;
+            return aRaw.localeCompare(bRaw, "de") * sortDir;
+          })
+          .forEach(r => tbody.appendChild(r));
+        table.querySelectorAll("thead th").forEach(t => t.classList.remove("sort-asc", "sort-desc"));
+        th.classList.add(sortDir === 1 ? "sort-asc" : "sort-desc");
+      });
+    });
+  }
+  </script>
 </head>
 <body>
   <header class="scoreboard">
@@ -40,5 +69,8 @@
       {% block content %}{% endblock %}
     {% endif %}
   </main>
+
+  <script>
+  </script>
 </body>
 </html>
