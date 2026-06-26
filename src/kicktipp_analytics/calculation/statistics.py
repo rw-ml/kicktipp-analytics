@@ -25,10 +25,10 @@ class PlayerStatistics:
     player_id: str
     total_tips: int
     exact_hits: int
-    #: Tendenz-Treffer inkl. exakter Treffer, da ein exakter Treffer immer
-    #: auch eine richtige Tendenz beinhaltet.
+    #: Alle Tipps mit richtig getippter Tendenz (≥2 Punkte).
     tendency_hits: int
-    #: Aufschlüsselung der Tendenz-Treffer nach tatsächlichem Spielausgang.
+    #: Tordifferenz richtig aber nicht exakt (genau 3 Punkte).
+    goal_difference_hits: int
     win_tips_correct: int
     draw_tips_correct: int
     misses: int
@@ -50,6 +50,7 @@ class StatisticsCalculator:
             total = len(player_evals)
             exact = 0
             tendency = 0
+            goal_diff = 0
             win_correct = 0
             draw_correct = 0
             misses = 0
@@ -65,6 +66,8 @@ class StatisticsCalculator:
                         draw_correct += 1
                     else:
                         win_correct += 1
+                if breakdown and breakdown.is_goal_difference_correct and not breakdown.is_exact_hit:
+                    goal_diff += 1
                 if ev.total_points == 0:
                     misses += 1
 
@@ -76,6 +79,7 @@ class StatisticsCalculator:
                     total_tips=total,
                     exact_hits=exact,
                     tendency_hits=tendency,
+                    goal_difference_hits=goal_diff,
                     win_tips_correct=win_correct,
                     draw_tips_correct=draw_correct,
                     misses=misses,
@@ -83,6 +87,5 @@ class StatisticsCalculator:
                 )
             )
 
-        # "Bremsfett"-Ranking: meiste Fehltipps zuerst.
         result.sort(key=lambda s: -s.misses)
         return result

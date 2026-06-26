@@ -55,8 +55,7 @@
   <nav class="tabs">
     <a class="tabs__item {% if request.endpoint == 'ranking' %}is-active{% endif %}" href="{{ url_for('ranking') }}">Bestenliste</a>
     <a class="tabs__item {% if request.endpoint in ['matchday', 'matchday_index'] %}is-active{% endif %}" href="{{ url_for('matchday_index') }}">Spieltage</a>
-    <a class="tabs__item {% if request.endpoint == 'statistics' %}is-active{% endif %}" href="{{ url_for('statistics') }}">Statistiken</a>
-    <a class="tabs__item {% if request.endpoint in ['tip_behavior_overview', 'tip_behavior_detail'] %}is-active{% endif %}" href="{{ url_for('tip_behavior_overview') }}">Tippverhalten</a>
+    <a class="tabs__item {% if request.endpoint in ['details', 'tip_behavior_detail'] %}is-active{% endif %}" href="{{ url_for('details') }}">Details</a>
   </nav>
 
   <main class="content">

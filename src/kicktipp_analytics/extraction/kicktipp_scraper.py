@@ -145,6 +145,7 @@ class KicktippScraper(IKicktippDataSource):
         matches: list[Match] = []
         results: list[MatchResult] = []
         for matchday_number in self._iter_spielplan_matchdays(page):
+            matchday_title = self._read_matchday_title(page, matchday_number)
             rows = page.locator(self._selectors.SPIELPLAN_ROW_SELECTOR)
             for row_index in range(rows.count()):
                 row = rows.nth(row_index)
@@ -157,13 +158,15 @@ class KicktippScraper(IKicktippDataSource):
                 if not home_name or not away_name:
                     continue
 
-                # Zeilenindex im Match-ID → verhindert doppelte IDs bei
-                # K.O.-Spielen mit noch unbekannten Teams ("Unbekannt vs Unbekannt")
                 match_id = _match_id(season, matchday_number, row_index, home_name, away_name)
                 matches.append(
                     Match(
                         id=match_id,
-                        matchday=Matchday(number=matchday_number, season=season),
+                        matchday=Matchday(
+                            number=matchday_number,
+                            season=season,
+                            name=matchday_title,
+                        ),
                         home_team=Team(id=_slugify(home_name), name=home_name),
                         away_team=Team(id=_slugify(away_name), name=away_name),
                         kickoff=_parse_kickoff(kickoff_text),
@@ -241,6 +244,38 @@ class KicktippScraper(IKicktippDataSource):
             return None
         tip_text = cell.evaluate(_JS_TIP_TEXT)
         return _parse_score(tip_text)
+
+    # Bekannte Kicktipp-Tab-Namen für Spieltage und K.o.-Runden.
+    # Whitelist verhindert, dass Nicht-Spieltag-Tabs (z.B. 'Bonus') gematcht werden.
+    _MATCHDAY_NAME_PATTERN = re.compile(
+        r'^\d+\.\s*Spieltag$'
+        r'|^(Sechzehntel|Achtel|Viertel|Halb)finale$'
+        r'|^Finale$'
+        r'|^\d+\.\s*Finale$'
+        r'|^Spiel\s+um\s+Platz\s+\d+$',
+        re.IGNORECASE,
+    )
+
+    def _read_matchday_title(self, page: Page, matchday_number: int) -> str | None:
+        """Liest den Phasennamen aus dem Spieltag-Navigations-Tab.
+        Akzeptiert nur bekannte Spieltag-Muster (Whitelist), damit Nicht-
+        Spieltag-Tabs wie 'Bonus' nicht fälschlich zurückgegeben werden."""
+        for selector in [
+            f"a[href*='tippspielplan'][href*='spieltagIndex={matchday_number}']",
+            f"a[href*='spieltagIndex={matchday_number}']",
+        ]:
+            loc = page.locator(selector)
+            for i in range(loc.count()):
+                text = _safe_inner_text(loc.nth(i)).strip()
+                if text and self._MATCHDAY_NAME_PATTERN.match(text):
+                    return text
+        # Fallback: Seitentitel parsen – enthält oft den Rundennamen
+        title = page.title()
+        for part in re.split(r'[\-–|]', title):
+            part = part.strip()
+            if part and self._MATCHDAY_NAME_PATTERN.match(part):
+                return part
+        return None
 
     def _iter_spielplan_matchdays(self, page: Page, max_matchdays: int = 64) -> Iterator[int]:
         """Iteriert über Spieltage bis Kicktipp auf einen bekannten umleitet

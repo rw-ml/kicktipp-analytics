@@ -67,6 +67,7 @@ class RankingCalculator:
     def build_snapshots(self, standings: list[MatchdayStanding]) -> list[RankingSnapshot]:
         cumulative_points: dict[str, int] = defaultdict(int)
         cumulative_wins: dict[str, int] = defaultdict(int)
+        known_players: set[str] = set()
         snapshots: list[RankingSnapshot] = []
 
         standings_by_matchday: dict[int, list[MatchdayStanding]] = defaultdict(list)
@@ -74,27 +75,39 @@ class RankingCalculator:
             standings_by_matchday[s.matchday_number].append(s)
 
         for matchday in sorted(standings_by_matchday):
+            # Neue Spieler erfassen die diesen Spieltag erstmals auftauchen
+            for s in standings_by_matchday[matchday]:
+                known_players.add(s.player_id)
+
+            # Kumulierte Punkte/Siege aktualisieren (nur für Spieler die getippt haben)
+            tipped_this: dict[str, MatchdayStanding] = {}
             for s in standings_by_matchday[matchday]:
                 cumulative_points[s.player_id] += s.points
                 if s.is_matchday_winner:
                     cumulative_wins[s.player_id] += 1
+                tipped_this[s.player_id] = s
 
+            # Rang für ALLE bekannten Spieler berechnen, nicht nur die Tipper
+            # dieses Spieltags. Spieler die nicht getippt haben, rutschen ab
+            # wenn andere mehr Punkte sammeln.
             ranked_players = sorted(
-                cumulative_points.keys(),
+                known_players,
                 key=lambda p: (-cumulative_points[p], -cumulative_wins[p]),
             )
             rank_by_player = {p: rank for rank, p in enumerate(ranked_players, start=1)}
 
-            for s in standings_by_matchday[matchday]:
+            # Snapshot für ALLE bekannten Spieler erstellen
+            for player_id in known_players:
+                s = tipped_this.get(player_id)
                 snapshots.append(
                     RankingSnapshot(
-                        player_id=s.player_id,
+                        player_id=player_id,
                         matchday_number=matchday,
-                        points_this_matchday=s.points,
-                        is_matchday_winner=s.is_matchday_winner,
-                        cumulative_points=cumulative_points[s.player_id],
-                        cumulative_matchday_wins=cumulative_wins[s.player_id],
-                        rank_after_matchday=rank_by_player[s.player_id],
+                        points_this_matchday=s.points if s else 0,
+                        is_matchday_winner=s.is_matchday_winner if s else False,
+                        cumulative_points=cumulative_points[player_id],
+                        cumulative_matchday_wins=cumulative_wins[player_id],
+                        rank_after_matchday=rank_by_player[player_id],
                     )
                 )
 

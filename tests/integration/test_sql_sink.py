@@ -60,6 +60,7 @@ def test_sql_sink_roundtrip(tmp_path):
         total_tips=1,
         exact_hits=1,
         tendency_hits=1,
+        goal_difference_hits=0,
         win_tips_correct=1,
         draw_tips_correct=0,
         misses=0,

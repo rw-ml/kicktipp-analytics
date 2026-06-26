@@ -21,7 +21,7 @@
 <section class="panel">
   <h2 class="panel__title">Häufigste Tipps von {{ detail.display_name }}</h2>
   <p class="panel__hint">{{ detail.total_tips }} Tipps insgesamt, im Schnitt {{ detail.global_average_goals }} Tore pro getipptem Team.</p>
-  <div class="scoreline-list">
+  <div class="scoreline-list" id="scorelineList">
     {% for s in detail.top_scorelines %}
     <div class="scoreline-row">
       <span class="scoreline-row__score">{{ s.home_goals }}:{{ s.away_goals }}</span>
@@ -31,6 +31,31 @@
       <span class="scoreline-row__pct">{{ s.pct }}&nbsp;% ({{ s.count }}&times;)</span>
     </div>
     {% endfor %}
+    {% if detail.all_scorelines | length > 5 %}
+    <div id="scorelineExtra" style="display:none;">
+      {% for s in detail.all_scorelines[5:] %}
+      <div class="scoreline-row">
+        <span class="scoreline-row__score">{{ s.home_goals }}:{{ s.away_goals }}</span>
+        <span class="tip-distribution__bar-track">
+          <span class="tip-distribution__bar" style="width: {{ s.pct }}%; background: var(--pitch);"></span>
+        </span>
+        <span class="scoreline-row__pct">{{ s.pct }}&nbsp;% ({{ s.count }}&times;)</span>
+      </div>
+      {% endfor %}
+    </div>
+    <button class="scoreline-expand-btn" id="scorelineToggle"
+      onclick="
+        var extra = document.getElementById('scorelineExtra');
+        var btn = document.getElementById('scorelineToggle');
+        if (extra.style.display === 'none') {
+          extra.style.display = 'block';
+          btn.textContent = '▲ Weniger anzeigen';
+        } else {
+          extra.style.display = 'none';
+          btn.textContent = '▼ Alle {{ detail.all_scorelines | length }} Ergebnisse anzeigen';
+        }
+      ">▼ Alle {{ detail.all_scorelines | length }} Ergebnisse anzeigen</button>
+    {% endif %}
   </div>
 </section>
 

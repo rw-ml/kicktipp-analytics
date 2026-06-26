@@ -11,7 +11,7 @@ import os
 from collections import Counter, defaultdict
 from functools import lru_cache
 
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import Integer, create_engine, func, select
 from sqlalchemy.engine import Engine
 
 from kicktipp_analytics.calculation.evaluators.tendenz_tordifferenz_ergebnis import (
@@ -76,16 +76,70 @@ def has_data() -> bool:
 
 
 def latest_matchday_number() -> int | None:
+    # fact_ranking_snapshot enthält nur tatsächlich gespielte Spieltage -
+    # dim_match würde auch zukünftige Spieltage zurückgeben und damit
+    # current_ranking() leer laufen lassen.
     with get_engine().connect() as conn:
-        return conn.execute(select(func.max(dim_match.c.matchday_number))).scalar()
+        return conn.execute(
+            select(func.max(fact_ranking_snapshot.c.matchday_number))
+        ).scalar()
+
+
+_MATCHDAY_ABBREVIATIONS: dict[str, str] = {
+    "sechzehntelfinale": "SF",
+    "16. finale": "SF",
+    "achtelfinale": "AF",
+    "8. finale": "AF",
+    "viertelfinale": "VF",
+    "4. finale": "VF",
+    "halbfinale": "HF",
+    "2. finale": "HF",
+    "finale": "F",
+    "spiel um platz 3": "3.",
+}
+
+
+def _abbreviate_matchday_name(name: str | None, matchday_number: int) -> str:
+    """Kürzt Phasennamen auf bekannte Abkürzungen:
+    Sechzehntelfinale → SF, Achtelfinale → AF, Viertelfinale → VF,
+    Halbfinale → HF, Finale → F. Gruppenphase bleibt 'Spieltag N'."""
+    if not name:
+        return f"Spieltag {matchday_number}"
+    lower = name.strip().lower()
+    for key, abbrev in _MATCHDAY_ABBREVIATIONS.items():
+        if lower == key:
+            return abbrev
+    return name
 
 
 def all_matchday_numbers() -> list[int]:
+    """Rückwärtskompatibel – gibt nur die Nummern zurück."""
+    return [m["number"] for m in all_matchdays()]
+
+
+def all_matchdays() -> list[dict]:
+    """Alle Spieltage mit Nummer und Titel (abgekürzt für K.o.-Runden)."""
     with get_engine().connect() as conn:
         rows = conn.execute(
-            select(dim_match.c.matchday_number).distinct().order_by(dim_match.c.matchday_number)
+            select(
+                dim_match.c.matchday_number,
+                dim_match.c.matchday_name,
+            )
+            .distinct()
+            .order_by(dim_match.c.matchday_number)
         ).all()
-        return [r[0] for r in rows]
+    seen: set[int] = set()
+    result = []
+    for r in rows:
+        if r.matchday_number in seen:
+            continue
+        seen.add(r.matchday_number)
+        display = _abbreviate_matchday_name(r.matchday_name, r.matchday_number)
+        result.append({
+            "number": r.matchday_number,
+            "name": display,
+        })
+    return result
 
 
 def current_ranking() -> list[dict]:
@@ -118,6 +172,19 @@ def current_ranking() -> list[dict]:
             ).all()
             previous_rank = {r.player_id: r.rank_after_matchday for r in prev_rows}
 
+        # Anzahl Spieltage mit echten Tipps pro Spieler (für korrekten Durchschnitt)
+        tip_counts = conn.execute(
+            select(
+                fact_tip.c.player_id,
+                func.count(func.distinct(dim_match.c.matchday_number)).label("tip_matchdays"),
+            )
+            .join(dim_match, dim_match.c.match_id == fact_tip.c.match_id)
+            .group_by(fact_tip.c.player_id)
+        ).all()
+        tip_matchdays_by_player = {r.player_id: r.tip_matchdays for r in tip_counts}
+
+    max_tip_matchdays = max(tip_matchdays_by_player.values(), default=1)
+
     ranking = []
     for row in current_rows:
         prev = previous_rank.get(row.player_id)
@@ -130,6 +197,7 @@ def current_ranking() -> list[dict]:
         else:
             trend = "gleich"
 
+        tip_md = tip_matchdays_by_player.get(row.player_id, 1)
         ranking.append(
             {
                 "player_id": row.player_id,
@@ -138,10 +206,30 @@ def current_ranking() -> list[dict]:
                 "matchday_wins": row.cumulative_matchday_wins,
                 "rank": row.rank_after_matchday,
                 "trend": trend,
-                "average_points_per_matchday": round(row.cumulative_points / last, 1),
+                # Durchschnitt über die Spieltage mit eigenen Tipps, nicht über alle
+                "average_points_per_matchday": round(row.cumulative_points / tip_md, 1),
+                "tip_matchdays": tip_md,
+                "max_tip_matchdays": max_tip_matchdays,
+                # 0.0 = hat 1 Tipp abgegeben, 1.0 = hat alle Tipps abgegeben
+                "tip_completeness": tip_md / max_tip_matchdays,
             }
         )
     return ranking
+
+
+def _last_tip_matchday_per_player() -> dict[str, int]:
+    """Letzter Spieltag an dem jeder Spieler tatsächlich getippt hat.
+    Basis für das Dashed-Styling in den Charts."""
+    with get_engine().connect() as conn:
+        rows = conn.execute(
+            select(
+                fact_tip.c.player_id,
+                func.max(dim_match.c.matchday_number).label("last_matchday"),
+            )
+            .join(dim_match, dim_match.c.match_id == fact_tip.c.match_id)
+            .group_by(fact_tip.c.player_id)
+        ).all()
+    return {r.player_id: r.last_matchday for r in rows}
 
 
 def formkurve_series() -> dict:
@@ -158,12 +246,18 @@ def formkurve_series() -> dict:
             .order_by(fact_ranking_snapshot.c.matchday_number)
         ).all()
 
+    last_tip = _last_tip_matchday_per_player()
     series: dict[str, dict] = {}
     matchdays: set[int] = set()
     for row in rows:
         matchdays.add(row.matchday_number)
         entry = series.setdefault(
-            row.player_id, {"display_name": row.display_name, "points_by_matchday": {}}
+            row.player_id,
+            {
+                "display_name": row.display_name,
+                "points_by_matchday": {},
+                "last_tip_matchday": last_tip.get(row.player_id, 0),
+            },
         )
         entry["points_by_matchday"][row.matchday_number] = row.cumulative_points
 
@@ -172,9 +266,7 @@ def formkurve_series() -> dict:
 
 
 def rank_history_series() -> dict:
-    """Pro Spieler eine Zeitreihe (Spieltag -> Rang) - deckt die Anforderung
-    'Ranking-Veränderungen über die Saison' ab (im Unterschied zur Formkurve,
-    die die Punkte zeigt, nicht die Platzierung)."""
+    """Pro Spieler eine Zeitreihe (Spieltag -> Rang)."""
     with get_engine().connect() as conn:
         rows = conn.execute(
             select(
@@ -187,6 +279,7 @@ def rank_history_series() -> dict:
             .order_by(fact_ranking_snapshot.c.matchday_number)
         ).all()
 
+    last_tip = _last_tip_matchday_per_player()
     series: dict[str, dict] = {}
     matchdays: set[int] = set()
     max_rank = 1
@@ -194,7 +287,12 @@ def rank_history_series() -> dict:
         matchdays.add(row.matchday_number)
         max_rank = max(max_rank, row.rank_after_matchday)
         entry = series.setdefault(
-            row.player_id, {"display_name": row.display_name, "rank_by_matchday": {}}
+            row.player_id,
+            {
+                "display_name": row.display_name,
+                "rank_by_matchday": {},
+                "last_tip_matchday": last_tip.get(row.player_id, 0),
+            },
         )
         entry["rank_by_matchday"][row.matchday_number] = row.rank_after_matchday
 
@@ -353,30 +451,105 @@ def assign_competition_rank(stats: list[dict], key: str) -> None:
         entry["rank"] = rank
 
 
-def statistics_table() -> list[dict]:
+def details_data() -> dict:
+    """Kombinierte Daten für die Details-Seite.
+    Qualitäts-Statistiken werden direkt aus fact_tip berechnet (immer aktuell),
+    nicht aus fact_player_statistics (könnte veraltet sein wenn Pipeline-Fehler).
+    """
+    # ── Rang aus dem aktuellen Ranking ──────────────────────────────
+    ranking = current_ranking()
+    rank_by_player = {r["player_id"]: r["rank"] for r in ranking}
+
+    # ── Qualitäts-Statistiken live aus fact_tip ───────────────────────
+    # fact_tip enthält is_tendency_correct, is_goal_difference_correct,
+    # is_exact_hit direkt als Spalten - kein Umweg über fact_player_statistics nötig.
     with get_engine().connect() as conn:
         rows = conn.execute(
             select(
-                fact_player_statistics.c.player_id,
+                fact_tip.c.player_id,
                 dim_player.c.display_name,
-                fact_player_statistics.c.total_tips,
-                fact_player_statistics.c.exact_hits,
-                fact_player_statistics.c.tendency_hits,
-                fact_player_statistics.c.win_tips_correct,
-                fact_player_statistics.c.draw_tips_correct,
-                fact_player_statistics.c.misses,
-                fact_player_statistics.c.hit_rate,
+                func.count().label("total_tips"),
+                func.sum(func.cast(fact_tip.c.is_tendency_correct, Integer)).label("tendency_hits"),
+                func.sum(
+                    func.cast(
+                        (fact_tip.c.is_goal_difference_correct == True) &  # noqa: E712
+                        (fact_tip.c.is_exact_hit == False),  # noqa: E712
+                        Integer,
+                    )
+                ).label("goal_difference_hits"),
+                func.sum(func.cast(fact_tip.c.is_exact_hit, Integer)).label("exact_hits"),
+                func.sum(func.cast(fact_tip.c.points_awarded == 0, Integer)).label("misses"),
             )
-            .join(dim_player, dim_player.c.player_id == fact_player_statistics.c.player_id)
-            .order_by(fact_player_statistics.c.hit_rate.desc())
+            .join(dim_player, dim_player.c.player_id == fact_tip.c.player_id)
+            .group_by(fact_tip.c.player_id, dim_player.c.display_name)
         ).all()
 
-    stats = [dict(r._mapping) for r in rows]
-    assign_competition_rank(stats, key="hit_rate")
-    max_misses = max((s["misses"] for s in stats), default=0)
-    for s in stats:
-        s["is_bremsfett_leader"] = s["misses"] == max_misses and max_misses > 0
-    return stats
+    stats_by_player = {r.player_id: dict(r._mapping) for r in rows}
+
+    # ── Tendenz-Verhalten (Sieg/Unentsch. Tipps + Treffer) ──────────
+    tendency_by_player = {
+        o["player_id"]: o
+        for o in _compute_tendency_overview(_fetch_tips_with_team_context())
+    }
+
+    # ── Ergebnis-Qualität zusammenbauen ──────────────────────────────
+    quality_rows = []
+    for player_id, s in stats_by_player.items():
+        total = s["total_tips"] or 0
+        tendency = s["tendency_hits"] or 0
+        goal_diff = s["goal_difference_hits"] or 0
+        exact = s["exact_hits"] or 0
+        misses = s["misses"] or 0
+        goal_diff_total = goal_diff + exact
+
+        quality_rows.append({
+            "player_id": player_id,
+            "display_name": s["display_name"],
+            "rank": rank_by_player.get(player_id, "–"),
+            "total_tips": total,
+            "tendency_hits": tendency,
+            "goal_difference_hits": goal_diff_total,
+            "exact_hits": exact,
+            "misses": misses,
+            "hit_rate_tendency": round(tendency / total * 100, 1) if total else 0,
+            "hit_rate_goaldiff": round(goal_diff_total / total * 100, 1) if total else 0,
+            "hit_rate_exact": round(exact / total * 100, 1) if total else 0,
+        })
+
+    max_misses = max((r["misses"] for r in quality_rows), default=0)
+    for r in quality_rows:
+        r["is_bremsfett"] = r["misses"] == max_misses and max_misses > 0
+
+    quality_rows.sort(key=lambda r: -r["hit_rate_tendency"])
+    assign_competition_rank(quality_rows, key="hit_rate_tendency")
+
+    # ── Tendenz-Verhalten zusammenbauen ──────────────────────────────
+    tendency_rows = [
+        {
+            "player_id": player_id,
+            "display_name": t["display_name"],
+            "rank": rank_by_player.get(player_id, "–"),
+            "win_total": t["win_total"],
+            "win_correct": t["win_correct"],
+            "draw_total": t["draw_total"],
+            "draw_correct": t["draw_correct"],
+        }
+        for player_id, t in tendency_by_player.items()
+    ]
+    tendency_rows.sort(key=lambda r: r["display_name"])
+
+    tip_rows = _fetch_tips_with_team_context()
+    return {
+        "quality": quality_rows,
+        "tendency": tendency_rows,
+        "similarity": _compute_similarity_matrix(tip_rows),
+        "players": list_players(),
+    }
+
+
+def statistics_table() -> list[dict]:
+    """Rückwärtskompatibel – intern durch details_data() abgedeckt."""
+    return details_data()["quality"]
 
 
 def list_players() -> list[dict]:
@@ -501,15 +674,16 @@ def _compute_player_detail(tip_rows: list[dict], player_id: str) -> dict | None:
     scoreline_counts = Counter(
         (t["tipped_home_goals"], t["tipped_away_goals"]) for t in tip_rows
     )
-    top_scorelines = [
+    all_scorelines = [
         {
             "home_goals": hg,
             "away_goals": ag,
             "count": count,
             "pct": round(count / total * 100),
         }
-        for (hg, ag), count in scoreline_counts.most_common(5)
+        for (hg, ag), count in scoreline_counts.most_common()
     ]
+    top_scorelines = all_scorelines[:5]
 
     goals_by_team: dict[str, list[int]] = defaultdict(list)
     team_names: dict[str, str] = {}
@@ -547,6 +721,7 @@ def _compute_player_detail(tip_rows: list[dict], player_id: str) -> dict | None:
         "total_tips": total,
         "global_average_goals": round(global_average, 2),
         "top_scorelines": top_scorelines,
+        "all_scorelines": all_scorelines,
         "team_bias": team_bias,
     }
 

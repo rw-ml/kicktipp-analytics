@@ -3,7 +3,7 @@
 
 {% block content %}
 
-{# Spielerauswahl – über beiden Charts, steuert beide gleichzeitig #}
+{# Spielerauswahl – über beiden Charts #}
 <section class="panel player-select-panel">
   <h2 class="panel__title">Spieler</h2>
   <div class="player-select__actions">
@@ -45,7 +45,7 @@
     <table class="ranking-table sortable-table" id="rankingTable">
       <thead>
         <tr>
-          <th class="rank-col">Rang</th>
+          <th class="rank-col" data-col="num">Rang</th>
           <th></th>
           <th data-col="text">Spieler</th>
           <th class="num-col" data-col="num">Punkte</th>
@@ -54,34 +54,22 @@
         </tr>
       </thead>
       <tbody>
-        {% if ranking %}
-          {% for entry in ranking %}
-          <tr>
-            <td class="rank-col"><span class="rank-number">{{ entry.rank }}</span></td>
-            <td class="trend-col">
-              {% if entry.trend == 'auf' %}<span class="trend trend--up">▲</span>
-              {% elif entry.trend == 'ab' %}<span class="trend trend--down">▼</span>
-              {% elif entry.trend == 'neu' %}<span class="trend trend--new">neu</span>
-              {% else %}<span class="trend trend--flat">–</span>{% endif %}
-            </td>
-            <td class="player-col">{{ entry.display_name }}</td>
-            <td class="num-col points-col" data-value="{{ entry.points }}">{{ entry.points }}</td>
-            <td class="num-col" data-value="{{ entry.average_points_per_matchday }}">{{ entry.average_points_per_matchday }}</td>
-            <td class="num-col" data-value="{{ entry.matchday_wins }}">{{ entry.matchday_wins }}</td>
-          </tr>
-          {% endfor %}
-        {% else %}
-          {% for player_id, info in formkurve.players.items() %}
-          <tr>
-            <td class="rank-col"></td>
-            <td class="trend-col"></td>
-            <td class="player-col">{{ info.display_name }}</td>
-            <td class="num-col points-col" data-value="">–</td>
-            <td class="num-col" data-value="">–</td>
-            <td class="num-col" data-value="">–</td>
-          </tr>
-          {% endfor %}
-        {% endif %}
+        {% for entry in ranking %}
+        {% set opacity = [0.3, entry.tip_completeness] | max %}
+        <tr style="opacity: {{ '%.2f' | format(opacity) }};">
+          <td class="rank-col" data-value="{{ entry.rank }}"><span class="rank-number">{{ entry.rank }}</span></td>
+          <td class="trend-col">
+            {% if entry.trend == 'auf' %}<span class="trend trend--up">▲</span>
+            {% elif entry.trend == 'ab' %}<span class="trend trend--down">▼</span>
+            {% elif entry.trend == 'neu' %}<span class="trend trend--new">neu</span>
+            {% else %}<span class="trend trend--flat">–</span>{% endif %}
+          </td>
+          <td class="player-col">{{ entry.display_name }}</td>
+          <td class="num-col points-col" data-value="{{ entry.points }}">{{ entry.points }}</td>
+          <td class="num-col" data-value="{{ entry.average_points_per_matchday }}">{{ entry.average_points_per_matchday }}</td>
+          <td class="num-col" data-value="{{ entry.matchday_wins }}">{{ entry.matchday_wins }}</td>
+        </tr>
+        {% endfor %}
       </tbody>
     </table>
   </div>
@@ -96,7 +84,7 @@ const palette = [
   "#484848","#2860B8","#B83030","#A84890","#68A838","#883050"
 ];
 
-// Farben auf die Pills anwenden
+// Farben auf Pills anwenden
 document.querySelectorAll(".player-dot").forEach((dot, i) => {
   dot.style.background = palette[i % palette.length];
 });
@@ -104,24 +92,187 @@ document.querySelectorAll(".player-toggle").forEach((btn, i) => {
   btn.style.setProperty("--pill-color", palette[i % palette.length]);
 });
 
+// ── Hilfsfunktionen ───────────────────────────────────────────────
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Letzter Index mit einem echten (nicht-null) Wert. */
+function lastRealIndex(data) {
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (data[i] !== null) return i;
+  }
+  return -1;
+}
+
+/**
+ * Füllt null-Werte NACH dem letzten echten Wert mit diesem Wert auf
+ * (der Spieler hat aufgehört zu tippen – Punkte/Rang bleiben stehen).
+ * Null-Werte VOR dem letzten echten Wert bleiben null (Lücken innerhalb).
+ */
+function fillForward(data) {
+  const filled = [...data];
+  const last = lastRealIndex(filled);
+  if (last >= 0) {
+    for (let i = last + 1; i < filled.length; i++) {
+      filled[i] = filled[last];
+    }
+  }
+  return filled;
+}
+
+/**
+ * Baut ein Chart.js-Dataset.
+ * lastTipMatchday: letzter Spieltag mit echten Tipps (aus Backend).
+ * allMatchdays: alle Spieltag-Nummern des Charts (für Index-Berechnung).
+ * fillValue: wenn gesetzt, werden Werte NACH lastTipMatchday damit aufgefüllt
+ *   (für Formkurve: Punkte bleiben konstant); wenn null, bleiben Datenpunkte
+ *   wie sie sind (für Ranking: Rang ändert sich trotzdem durch andere Spieler).
+ */
+function buildDataset(label, rawData, color, lastTipMatchday, allMatchdays, fillValue) {
+  const lastTipIdx = allMatchdays.indexOf(lastTipMatchday);
+  const hasExt = lastTipIdx >= 0 && lastTipIdx < allMatchdays.length - 1;
+  const faded = hexToRgba(color, 0.3);
+
+  // Für Formkurve: Werte nach letztem Tipp auffüllen (Punkte bleiben konstant)
+  const data = rawData.map((v, i) => {
+    if (v !== null) return v;
+    if (fillValue !== null && hasExt && i > lastTipIdx) return fillValue;
+    return v;
+  });
+  // fillValue = letzter bekannter Wert (wird vom Aufrufer übergeben)
+  if (fillValue !== null && hasExt) {
+    const lastKnown = rawData[lastTipIdx] ?? fillValue;
+    for (let i = lastTipIdx + 1; i < data.length; i++) {
+      if (data[i] === null) data[i] = lastKnown;
+    }
+  }
+
+  return {
+    label,
+    data,
+    borderColor: color,
+    backgroundColor: color,
+    spanGaps: true,
+    tension: 0.15,
+    borderWidth: 2,
+    pointRadius: hasExt
+      ? (ctx) => ctx.dataIndex > lastTipIdx ? 0 : 3
+      : 3,
+    segment: hasExt ? {
+      borderColor: (ctx) => ctx.p0DataIndex >= lastTipIdx ? faded : color,
+      borderDash:  (ctx) => ctx.p0DataIndex >= lastTipIdx ? [5, 5] : [],
+    } : undefined,
+    _lastTipIdx: lastTipIdx,
+    _color: color,
+    _faded: faded,
+  };
+}
+
+// ── End-Label-Plugin ─────────────────────────────────────────────
+// layout: 'cascade' → einfache y-Kaskade, 1 Label/Zeile (Ranking-Verlauf)
+// layout: 'leader'  → Kaskade + dünne Verbindungslinie zum Endpunkt (Formkurve)
+const endLabelPlugin = {
+  id: "endLabel",
+  afterDatasetsDraw(chart) {
+    const { ctx, data } = chart;
+    const mode = chart.options.plugins?.endLabel?.layout ?? "cascade";
+
+    const items = [];
+    data.datasets.forEach((ds, i) => {
+      if (!chart.isDatasetVisible(i)) return;
+      const meta = chart.getDatasetMeta(i);
+      let lastIdx = -1;
+      for (let j = ds.data.length - 1; j >= 0; j--) {
+        if (ds.data[j] != null) { lastIdx = j; break; }
+      }
+      if (lastIdx < 0 || !meta.data[lastIdx]) return;
+      const isExtended = ds._lastTipIdx !== undefined && ds._lastTipIdx < ds.data.length - 1;
+      items.push({
+        label: ds.label,
+        color: isExtended ? ds._faded : ds._color,
+        x: meta.data[lastIdx].x,   // echter Endpunkt x
+        y: meta.data[lastIdx].y,   // echter Endpunkt y
+        renderX: meta.data[lastIdx].x + 10,
+        renderY: meta.data[lastIdx].y,
+      });
+    });
+
+    // Kaskade: Labels in y-Richtung sortieren und minimen Abstand einhalten
+    const MIN_GAP = 12;
+    items.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < items.length; i++) {
+      if (items[i].renderY - items[i - 1].renderY < MIN_GAP) {
+        items[i].renderY = items[i - 1].renderY + MIN_GAP;
+      }
+    }
+
+    ctx.save();
+    ctx.font = '11px "IBM Plex Sans", sans-serif';
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+
+    items.forEach(({ label, color, x, y, renderX, renderY }) => {
+      if (mode === "leader") {
+        // Verbindungslinie vom echten Datenpunkt zum Label
+        const dy = Math.abs(renderY - y);
+        // Je weiter das Label vom Punkt entfernt ist, desto weiter rechts
+        // beginnt der horizontale Teil der Leader Line
+        const xElbow = renderX + Math.min(dy * 0.4, 50);
+
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 0.8;
+        ctx.setLineDash([]);
+        // Kleiner Kreis am Datenpunkt
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.stroke();
+        // Linie: Datenpunkt → Knick → Label-Start
+        ctx.beginPath();
+        ctx.moveTo(x + 3, y);
+        ctx.lineTo(xElbow, renderY);
+        ctx.lineTo(renderX + xElbow - renderX + 4, renderY);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = color;
+      // Label etwas rechts vom Leitungs-Endpunkt
+      const labelX = mode === "leader"
+        ? renderX + Math.min(Math.abs(renderY - y) * 0.4, 50) + 6
+        : renderX;
+      ctx.fillText(label, labelX, renderY);
+    });
+
+    ctx.restore();
+  },
+};
+
+// ── Chart-Daten ───────────────────────────────────────────────────
 const matchdays = {{ formkurve.matchdays | tojson }};
 const players   = {{ formkurve.players   | tojson }};
 
-const pointsDatasets = Object.entries(players).map(([, info], i) => ({
-  label: info.display_name,
-  data: matchdays.map(md => info.points_by_matchday[md] ?? null),
-  borderColor: palette[i % palette.length],
-  backgroundColor: palette[i % palette.length],
-  spanGaps: true, tension: 0.15, pointRadius: 3, borderWidth: 2,
-}));
+const pointsDatasets = Object.entries(players).map(([, info], i) => {
+  const raw = matchdays.map(md => info.points_by_matchday[md] ?? null);
+  // Formkurve: Punkte bleiben konstant wenn nicht mehr getippt → letzten Wert auffüllen
+  const lastVal = raw.filter(v => v !== null).at(-1) ?? null;
+  return buildDataset(
+    info.display_name, raw, palette[i % palette.length],
+    info.last_tip_matchday, matchdays, lastVal
+  );
+});
 
 const formkurveChart = new Chart(document.getElementById("formkurve"), {
   type: "line",
   data: { labels: matchdays.map(md => "Spieltag " + md), datasets: pointsDatasets },
+  plugins: [endLabelPlugin],
   options: {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    layout: { padding: { right: 220 } },
+    plugins: { legend: { display: false }, endLabel: { layout: "leader" } },
     scales: {
       y: { beginAtZero: true, ticks: { font: { family: "IBM Plex Mono" } } },
       x: { ticks: { font: { family: "IBM Plex Sans" } } },
@@ -133,21 +284,27 @@ const rankMatchdays = {{ rank_history.matchdays | tojson }};
 const rankPlayers  = {{ rank_history.players   | tojson }};
 const maxRank      = {{ rank_history.max_rank  | tojson }};
 
-const rankDatasets = Object.entries(rankPlayers).map(([, info], i) => ({
-  label: info.display_name,
-  data: rankMatchdays.map(md => info.rank_by_matchday[md] ?? null),
-  borderColor: palette[i % palette.length],
-  backgroundColor: palette[i % palette.length],
-  spanGaps: true, tension: 0.15, pointRadius: 3, borderWidth: 2,
-}));
+const rankDatasets = Object.entries(rankPlayers).map(([, info], i) =>
+  // Ranking: kein Fill-Forward – der Rang fällt tatsächlich ab wenn andere
+  // weiter Punkte sammeln. Die echten Ränge kommen jetzt aus dem Backend
+  // (build_snapshots erstellt Einträge für alle Spieler an jedem Spieltag).
+  buildDataset(
+    info.display_name,
+    rankMatchdays.map(md => info.rank_by_matchday[md] ?? null),
+    palette[i % palette.length],
+    info.last_tip_matchday, rankMatchdays, null
+  )
+);
 
 const rankHistoryChart = new Chart(document.getElementById("rankHistory"), {
   type: "line",
   data: { labels: rankMatchdays.map(md => "Spieltag " + md), datasets: rankDatasets },
+  plugins: [endLabelPlugin],
   options: {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    layout: { padding: { right: 220 } },
+    plugins: { legend: { display: false }, endLabel: { layout: "cascade" } },
     scales: {
       y: {
         reverse: true,
@@ -164,6 +321,7 @@ const rankHistoryChart = new Chart(document.getElementById("rankHistory"), {
   },
 });
 
+// ── Spielerfilter ─────────────────────────────────────────────────
 function togglePlayer(index, btn) {
   const visible = !btn.classList.contains("is-active");
   btn.classList.toggle("is-active", visible);

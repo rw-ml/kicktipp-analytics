@@ -36,6 +36,7 @@ from flask import Flask, abort, redirect, render_template, url_for  # noqa: E402
 import data_access  # noqa: E402
 
 app = Flask(__name__)
+app.jinja_env.add_extension("jinja2.ext.do")
 
 
 @app.context_processor
@@ -67,31 +68,34 @@ def matchday_index():
 
 @app.route("/spieltage/<int:matchday_number>")
 def matchday(matchday_number: int):
-    available = data_access.all_matchday_numbers()
-    if matchday_number not in available:
+    available = data_access.all_matchdays()
+    if matchday_number not in {m["number"] for m in available}:
         abort(404)
     detail = data_access.matchday_detail(matchday_number)
+    current = next((m for m in available if m["number"] == matchday_number), None)
     return render_template(
         "matchday.html",
         matchday_number=matchday_number,
+        matchday_name=current["name"] if current else None,
         available_matchdays=available,
         **detail,
     )
 
 
+@app.route("/details")
+def details():
+    return render_template("details.html", **data_access.details_data())
+
+
+# Alte URLs weiterleiten damit bestehende Bookmarks nicht brechen
 @app.route("/statistiken")
 def statistics():
-    return render_template("statistics.html", stats=data_access.statistics_table())
+    return redirect(url_for("details"))
 
 
 @app.route("/tippverhalten")
 def tip_behavior_overview():
-    return render_template(
-        "tip_behavior_overview.html",
-        overview=data_access.tip_behavior_overview(),
-        players=data_access.list_players(),
-        similarity=data_access.player_similarity_matrix(),
-    )
+    return redirect(url_for("details"))
 
 
 @app.route("/tippverhalten/<player_id>")

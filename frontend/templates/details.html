@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Details – Kicktipp Analytics{% endblock %}
+
+{% block content %}
+
+<section class="panel">
+  <h2 class="panel__title">Ergebnis-Qualität</h2>
+  <p class="panel__hint">
+    <strong>Tendenz</strong> = mind. richtige Tendenz (≥2 Pkt.) &nbsp;·&nbsp;
+    <strong>Tordiff.</strong> = zusätzlich richtige Tordifferenz (≥3 Pkt.) &nbsp;·&nbsp;
+    <strong>Exakt</strong> = exaktes Ergebnis (4 Pkt.)
+    &nbsp;·&nbsp; Spaltenköpfe anklicken zum Sortieren.
+  </p>
+  <div class="table-scroll">
+    <table class="ranking-table sortable-table" id="qualityTable">
+      <thead>
+        <tr>
+          <th class="rank-col" data-col="num">Rang</th>
+          <th data-col="text">Spieler</th>
+          <th class="num-col" data-col="num">Tipps</th>
+          <th class="num-col" data-col="num">Tendenz</th>
+          <th class="num-col" data-col="num">Tordiff.</th>
+          <th class="num-col" data-col="num">Exakt</th>
+          <th class="num-col" data-col="num">Fehltipps</th>
+          <th class="num-col" data-col="num">Quote Tendenz</th>
+          <th class="num-col" data-col="num">Quote Tordiff.</th>
+          <th class="num-col" data-col="num">Quote Exakt</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in quality %}
+        <tr>
+          <td class="rank-col" data-value="{{ s.rank if s.rank != '–' else 99 }}">{{ s.rank }}</td>
+          <td class="player-col">{{ s.display_name }}</td>
+          <td class="num-col" data-value="{{ s.total_tips }}">{{ s.total_tips }}</td>
+          <td class="num-col" data-value="{{ s.tendency_hits }}">{{ s.tendency_hits }}</td>
+          <td class="num-col" data-value="{{ s.goal_difference_hits }}">{{ s.goal_difference_hits }}</td>
+          <td class="num-col" data-value="{{ s.exact_hits }}">{{ s.exact_hits }}</td>
+          <td class="num-col {% if s.is_bremsfett %}is-bremsfett{% endif %}" data-value="{{ s.misses }}">{{ s.misses }}</td>
+          <td class="num-col" data-value="{{ s.hit_rate_tendency }}">{{ s.hit_rate_tendency }}&nbsp;%</td>
+          <td class="num-col" data-value="{{ s.hit_rate_goaldiff }}">{{ s.hit_rate_goaldiff }}&nbsp;%</td>
+          <td class="num-col" data-value="{{ s.hit_rate_exact }}">{{ s.hit_rate_exact }}&nbsp;%</td>
+          <td>{% if s.is_bremsfett %}<span class="badge badge--bremsfett">Bremsfett-Pokal</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <h2 class="panel__title">Tendenz-Verhalten</h2>
+  <p class="panel__hint">
+    Was tippt wer – und wie oft liegt es richtig? Nur bereits gespielte Spiele zählen.
+    Heim- und Auswärtssieg fließen als „Sieg" in eine Kategorie.
+  </p>
+  <div class="table-scroll">
+    <table class="ranking-table sortable-table" id="tendenzTable">
+      <thead>
+        <tr>
+          <th class="rank-col" data-col="num">Rang</th>
+          <th data-col="text">Spieler</th>
+          <th class="num-col" data-col="num">Sieg-Tipps</th>
+          <th class="num-col" data-col="num">Sieg richtig</th>
+          <th class="num-col" data-col="num">Unentsch.-Tipps</th>
+          <th class="num-col" data-col="num">Unentsch. richtig</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tendency %}
+        <tr>
+          <td class="rank-col" data-value="{{ t.rank if t.rank != '–' else 99 }}">{{ t.rank }}</td>
+          <td class="player-col">
+            <a href="{{ url_for('tip_behavior_detail', player_id=t.player_id) }}">{{ t.display_name }}</a>
+          </td>
+          <td class="num-col" data-value="{{ t.win_total }}">{{ t.win_total }}</td>
+          <td class="num-col" data-value="{{ t.win_correct }}">{{ t.win_correct }}</td>
+          <td class="num-col" data-value="{{ t.draw_total }}">{{ t.draw_total }}</td>
+          <td class="num-col" data-value="{{ t.draw_correct }}">{{ t.draw_correct }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <h2 class="panel__title">Spieler-Ähnlichkeit</h2>
+  <p class="panel__hint">
+    Anteil der Spiele, bei denen zwei Spieler dieselbe Tendenz getippt haben.
+    Hohe Werte = ähnliches Tippmuster.
+  </p>
+  {% if similarity.player_ids | length > 1 %}
+  <div class="similarity-matrix-wrap">
+    <table class="similarity-matrix">
+      <thead>
+        <tr>
+          <th></th>
+          {% for name in similarity.display_names %}<th>{{ name }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row_name in similarity.display_names %}
+        <tr>
+          <th>{{ row_name }}</th>
+          {% for value in similarity.matrix[loop.index0] %}
+          {% if value is none %}
+          <td class="similarity-cell similarity-cell--empty">–</td>
+          {% else %}
+          <td class="similarity-cell" style="background: rgba(47,107,68,{{ (value/100*0.55)|round(2) }});">{{ value }}&nbsp;%</td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2 class="panel__title">Spieler im Detail</h2>
+  <p class="panel__hint">Lieblingsergebnisse und Team-Vorlieben einzelner Tippspieler.</p>
+  <div class="player-pills">
+    {% for p in players %}
+    <a class="player-pill" href="{{ url_for('tip_behavior_detail', player_id=p.player_id) }}">{{ p.display_name }}</a>
+    {% endfor %}
+  </div>
+</section>
+
+<script>
+makeSortable("qualityTable");
+makeSortable("tendenzTable");
+</script>
+{% endblock %}

@@ -77,6 +77,7 @@ class SqlDataSink:
                         {
                             "match_id": m.id,
                             "matchday_number": m.matchday.number,
+                            "matchday_name": m.matchday.name,
                             "season": m.matchday.season,
                             "home_team_id": m.home_team.id,
                             "away_team_id": m.away_team.id,
@@ -168,6 +169,7 @@ class SqlDataSink:
                             "total_tips": s.total_tips,
                             "exact_hits": s.exact_hits,
                             "tendency_hits": s.tendency_hits,
+                            "goal_difference_hits": s.goal_difference_hits,
                             "win_tips_correct": s.win_tips_correct,
                             "draw_tips_correct": s.draw_tips_correct,
                             "misses": s.misses,

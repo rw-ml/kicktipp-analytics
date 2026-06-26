@@ -4,11 +4,11 @@ from kicktipp_analytics.calculation.statistics import StatisticsCalculator
 from kicktipp_analytics.domain.models import Tendency
 
 
-def make_eval(player: str, match: str, points: int, tendency_correct: bool, exact: bool):
+def make_eval(player: str, match: str, points: int, tendency_correct: bool, exact: bool, goal_diff_correct: bool = False):
     breakdown = PointsBreakdown(
         points=points,
         is_tendency_correct=tendency_correct,
-        is_goal_difference_correct=False,
+        is_goal_difference_correct=goal_diff_correct or exact,
         is_exact_hit=exact,
     )
     return TipEvaluation(
@@ -67,3 +67,21 @@ def test_bremsfett_ranking_sorts_by_most_misses():
     match_to_tendency = {"m1": Tendency.HOME_WIN, "m2": Tendency.AWAY_WIN}
     stats = StatisticsCalculator().calculate(evaluations, match_to_tendency)
     assert stats[0].player_id == "alice"  # mehr Fehltipps -> Spitzenreiter im Bremsfett-Ranking
+
+
+def test_goal_difference_hits():
+    evaluations = [
+        make_eval("alice", "m1", 4, True, True, True),   # exakt → kein goal_diff_hit
+        make_eval("alice", "m2", 3, True, False, True),  # tordiff, nicht exakt → goal_diff_hit
+        make_eval("alice", "m3", 2, True, False, False), # tendenz nur
+        make_eval("alice", "m4", 0, False, False, False),# miss
+    ]
+    match_to_tendency = {
+        "m1": Tendency.HOME_WIN, "m2": Tendency.AWAY_WIN,
+        "m3": Tendency.DRAW, "m4": Tendency.HOME_WIN,
+    }
+    stats = StatisticsCalculator().calculate(evaluations, match_to_tendency)
+    alice = next(s for s in stats if s.player_id == "alice")
+    assert alice.exact_hits == 1
+    assert alice.goal_difference_hits == 1
+    assert alice.tendency_hits == 3  # m1+m2+m3

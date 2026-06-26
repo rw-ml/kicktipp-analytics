@@ -631,3 +631,45 @@ code {
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* ── Spieltag-Phase Labels + Nav ────────────────────────────────── */
+.matchday-phase-label {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-left: 0.6rem;
+}
+.matchday-nav__sep {
+  display: inline-block;
+  width: 1px;
+  height: 1.4em;
+  background: var(--line);
+  margin: 0 0.35rem;
+  vertical-align: middle;
+}
+.matchday-nav__item--knockout {
+  background: rgba(27, 43, 34, 0.06);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+.matchday-nav__item--knockout.is-active {
+  background: var(--pitch);
+  color: #fff;
+  border-color: var(--pitch);
+}
+
+/* ── Scoreline Expand-Button ─────────────────────────────────────── */
+.scoreline-expand-btn {
+  display: block;
+  margin: 0.5rem 1.4rem 0.8rem;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  color: var(--pitch);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+.scoreline-expand-btn:hover { text-decoration: underline; }
