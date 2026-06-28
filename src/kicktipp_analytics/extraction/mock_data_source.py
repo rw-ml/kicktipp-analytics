@@ -135,4 +135,5 @@ class MockKicktippDataSource(IKicktippDataSource):
             matches=self.get_matches(season),
             results=self.get_results(season),
             tips=self.get_tips(season),
+            bonus_points={},
         )

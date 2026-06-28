@@ -23,13 +23,13 @@ from kicktipp_analytics.domain.models import Match, MatchResult, Player, Tip
 
 @dataclass
 class ScrapedData:
-    """Alle Rohdaten eines Pipeline-Laufs in einer Struktur.
-    Ermöglicht es, alles in einer einzigen Browser-Session zu sammeln.
-    """
+    """Alle Rohdaten eines Pipeline-Laufs in einer Struktur."""
     players: list[Player] = field(default_factory=list)
     matches: list[Match] = field(default_factory=list)
     results: list[MatchResult] = field(default_factory=list)
     tips: list[Tip] = field(default_factory=list)
+    bonus_points: dict[str, int] = field(default_factory=dict)   # player_id → Bonuspunkte
+    siege_by_player: dict[str, float] = field(default_factory=dict)  # player_id → Spieltagssiege (Kicktipp-Wert, kann Bruchteile haben)
 
 
 class IKicktippDataSource(Protocol):

@@ -92,3 +92,11 @@ fact_player_statistics = Table(
     Column("misses", Integer, nullable=False),
     Column("hit_rate", Float, nullable=False),
 )
+
+fact_player_bonus = Table(
+    "fact_player_bonus",
+    metadata,
+    Column("player_id", String, ForeignKey("dim_player.player_id"), primary_key=True),
+    Column("bonus_points", Integer, nullable=False, default=0),
+    Column("siege", Float, nullable=False, default=0.0),
+)

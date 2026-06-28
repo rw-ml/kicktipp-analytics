@@ -22,6 +22,7 @@ from kicktipp_analytics.persistence.schema import (
     dim_match,
     dim_player,
     dim_team,
+    fact_player_bonus,
     fact_player_statistics,
     fact_ranking_snapshot,
     fact_tip,
@@ -173,15 +174,33 @@ def current_ranking() -> list[dict]:
             .order_by(fact_ranking_snapshot.c.rank_after_matchday)
         ).all()
 
+        # Bonus zuerst lesen – wird für Trend-Berechnung (previous_rank) gebraucht
+        bonus_rows = conn.execute(
+            select(
+                fact_player_bonus.c.player_id,
+                fact_player_bonus.c.bonus_points,
+                fact_player_bonus.c.siege,
+            )
+        ).all()
+        bonus_by_player = {r.player_id: r.bonus_points for r in bonus_rows}
+        siege_by_player = {r.player_id: r.siege for r in bonus_rows}
+
         previous_rank: dict[str, int] = {}
         if last > 1:
             prev_rows = conn.execute(
                 select(
                     fact_ranking_snapshot.c.player_id,
-                    fact_ranking_snapshot.c.rank_after_matchday,
+                    fact_ranking_snapshot.c.cumulative_points,
                 ).where(fact_ranking_snapshot.c.matchday_number == last - 1)
             ).all()
-            previous_rank = {r.player_id: r.rank_after_matchday for r in prev_rows}
+            sorted_prev = sorted(
+                prev_rows,
+                key=lambda r: (
+                    -(r.cumulative_points + bonus_by_player.get(r.player_id, 0)),
+                    -siege_by_player.get(r.player_id, 0.0),
+                ),
+            )
+            previous_rank = {r.player_id: rank for rank, r in enumerate(sorted_prev, start=1)}
 
         # Anzahl Spieltage mit echten Tipps pro Spieler (für korrekten Durchschnitt)
         tip_counts = conn.execute(
@@ -198,33 +217,44 @@ def current_ranking() -> list[dict]:
 
     ranking = []
     for row in current_rows:
-        prev = previous_rank.get(row.player_id)
-        if prev is None:
-            trend = "neu"
-        elif prev > row.rank_after_matchday:
-            trend = "auf"
-        elif prev < row.rank_after_matchday:
-            trend = "ab"
-        else:
-            trend = "gleich"
-
         tip_md = tip_matchdays_by_player.get(row.player_id, 1)
+        bonus = bonus_by_player.get(row.player_id, 0)
+        siege = siege_by_player.get(row.player_id, 0.0)
+        tip_points = row.cumulative_points
         ranking.append(
             {
                 "player_id": row.player_id,
                 "display_name": row.display_name,
-                "points": row.cumulative_points,
-                "matchday_wins": row.cumulative_matchday_wins,
-                "rank": row.rank_after_matchday,
-                "trend": trend,
-                # Durchschnitt über die Spieltage mit eigenen Tipps, nicht über alle
-                "average_points_per_matchday": round(row.cumulative_points / tip_md, 1),
+                "tip_points": tip_points,
+                "bonus_points": bonus,
+                "points": tip_points + bonus,
+                "matchday_wins": siege,
+                "rank": 0,   # wird gleich gesetzt
+                "trend": "gleich",  # wird gleich gesetzt
+                "average_points_per_matchday": round(tip_points / tip_md, 1),
                 "tip_matchdays": tip_md,
                 "max_tip_matchdays": max_tip_matchdays,
-                # 0.0 = hat 1 Tipp abgegeben, 1.0 = hat alle Tipps abgegeben
                 "tip_completeness": tip_md / max_tip_matchdays,
             }
         )
+
+    # Rang inkl. Bonus berechnen
+    ranking.sort(key=lambda e: (-(e["tip_points"] + e["bonus_points"]), -e["matchday_wins"]))
+    for i, entry in enumerate(ranking, start=1):
+        entry["rank"] = i
+
+    # Trend erst NACH der Neusortierung berechnen – Vergleich neuer Rang vs. Vorgänger-Rang
+    for entry in ranking:
+        prev = previous_rank.get(entry["player_id"])
+        if prev is None:
+            entry["trend"] = "neu"
+        elif prev > entry["rank"]:
+            entry["trend"] = "auf"
+        elif prev < entry["rank"]:
+            entry["trend"] = "ab"
+        else:
+            entry["trend"] = "gleich"
+
     return ranking
 
 
@@ -243,8 +273,21 @@ def _last_tip_matchday_per_player() -> dict[str, int]:
     return {r.player_id: r.last_matchday for r in rows}
 
 
+def _bonus_per_player() -> dict[str, int]:
+    """Bonuspunkte pro Spieler aus fact_player_bonus."""
+    try:
+        with get_engine().connect() as conn:
+            rows = conn.execute(
+                select(fact_player_bonus.c.player_id, fact_player_bonus.c.bonus_points)
+            ).all()
+        return {r.player_id: r.bonus_points for r in rows}
+    except Exception:
+        return {}
+
+
 def formkurve_series() -> dict:
-    """Pro Spieler eine Zeitreihe (Spieltag -> kumulierte Punkte) für das Liniendiagramm."""
+    """Pro Spieler eine Zeitreihe (Spieltag -> Gesamtpunkte inkl. Bonus).
+    Index 0 = Bonuspunkte als Startpunkt (vor Spieltag 1)."""
     with get_engine().connect() as conn:
         rows = conn.execute(
             select(
@@ -258,54 +301,88 @@ def formkurve_series() -> dict:
         ).all()
 
     last_tip = _last_tip_matchday_per_player()
+    bonus = _bonus_per_player()
     series: dict[str, dict] = {}
     matchdays: set[int] = set()
     for row in rows:
         matchdays.add(row.matchday_number)
+        b = bonus.get(row.player_id, 0)
         entry = series.setdefault(
             row.player_id,
             {
                 "display_name": row.display_name,
                 "points_by_matchday": {},
                 "last_tip_matchday": last_tip.get(row.player_id, 0),
+                "bonus_points": b,
             },
         )
-        entry["points_by_matchday"][row.matchday_number] = row.cumulative_points
+        # Gesamtpunkte = Tipppunkte kumuliert + Bonus
+        entry["points_by_matchday"][row.matchday_number] = row.cumulative_points + b
 
     sorted_matchdays = sorted(matchdays)
     return {"matchdays": sorted_matchdays, "players": series}
 
 
 def rank_history_series() -> dict:
-    """Pro Spieler eine Zeitreihe (Spieltag -> Rang)."""
+    """Pro Spieler eine Zeitreihe (Spieltag -> Rang inkl. Bonus).
+    Ränge werden pro Spieltag neu berechnet unter Einbeziehung der Bonuspunkte
+    und des Kicktipp-Siege-Wertes (kann Bruchteile haben) als Tiebreaker."""
     with get_engine().connect() as conn:
         rows = conn.execute(
             select(
                 fact_ranking_snapshot.c.player_id,
                 dim_player.c.display_name,
                 fact_ranking_snapshot.c.matchday_number,
-                fact_ranking_snapshot.c.rank_after_matchday,
+                fact_ranking_snapshot.c.cumulative_points,
             )
             .join(dim_player, dim_player.c.player_id == fact_ranking_snapshot.c.player_id)
             .order_by(fact_ranking_snapshot.c.matchday_number)
         ).all()
 
+        # Bonus und Siege (fraktional) aus fact_player_bonus
+        bonus_rows = conn.execute(
+            select(
+                fact_player_bonus.c.player_id,
+                fact_player_bonus.c.bonus_points,
+                fact_player_bonus.c.siege,
+            )
+        ).all()
+
+    bonus = {r.player_id: r.bonus_points for r in bonus_rows}
+    siege = {r.player_id: r.siege for r in bonus_rows}
     last_tip = _last_tip_matchday_per_player()
-    series: dict[str, dict] = {}
+
+    from collections import defaultdict
+    by_matchday: dict[int, list] = defaultdict(list)
+    display_names: dict[str, str] = {}
+    for row in rows:
+        by_matchday[row.matchday_number].append(row)
+        display_names[row.player_id] = row.display_name
+
+    series: dict[str, dict] = {
+        pid: {
+            "display_name": display_names[pid],
+            "rank_by_matchday": {},
+            "last_tip_matchday": last_tip.get(pid, 0),
+        }
+        for pid in display_names
+    }
     matchdays: set[int] = set()
     max_rank = 1
-    for row in rows:
-        matchdays.add(row.matchday_number)
-        max_rank = max(max_rank, row.rank_after_matchday)
-        entry = series.setdefault(
-            row.player_id,
-            {
-                "display_name": row.display_name,
-                "rank_by_matchday": {},
-                "last_tip_matchday": last_tip.get(row.player_id, 0),
-            },
+
+    for matchday, md_rows in by_matchday.items():
+        matchdays.add(matchday)
+        # Sortierung: Gesamtpunkte DESC, dann Kicktipp-Siege DESC (inkl. Bruchteile)
+        sorted_rows = sorted(
+            md_rows,
+            key=lambda r: (
+                -(r.cumulative_points + bonus.get(r.player_id, 0)),
+                -siege.get(r.player_id, 0.0),
+            ),
         )
-        entry["rank_by_matchday"][row.matchday_number] = row.rank_after_matchday
+        for rank, row in enumerate(sorted_rows, start=1):
+            series[row.player_id]["rank_by_matchday"][matchday] = rank
+            max_rank = max(max_rank, rank)
 
     sorted_matchdays = sorted(matchdays)
     return {"matchdays": sorted_matchdays, "players": series, "max_rank": max_rank}

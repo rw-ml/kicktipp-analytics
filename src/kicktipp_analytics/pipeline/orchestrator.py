@@ -68,3 +68,4 @@ class PipelineOrchestrator:
             sink.write_tip_evaluations(tips, evaluations)
             sink.write_ranking_snapshots(snapshots)
             sink.write_statistics(statistics)
+            sink.write_bonus_points(data.bonus_points, data.siege_by_player)

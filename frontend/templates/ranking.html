@@ -48,9 +48,11 @@
           <th class="rank-col" data-col="num">Rang</th>
           <th></th>
           <th data-col="text">Spieler</th>
-          <th class="num-col" data-col="num">Punkte</th>
+          <th class="num-col" data-col="num">Gesamt</th>
+          <th class="num-col" data-col="num">Tipps</th>
+          <th class="num-col" data-col="num">Bonus</th>
           <th class="num-col" data-col="num">Ø&nbsp;/&nbsp;Spieltag</th>
-          <th class="num-col" data-col="num">Siege</th>
+          <th class="num-col" data-col="num">Tagessiege</th>
         </tr>
       </thead>
       <tbody>
@@ -66,9 +68,10 @@
           </td>
           <td class="player-col">{{ entry.display_name }}</td>
           <td class="num-col points-col" data-value="{{ entry.points }}">{{ entry.points }}</td>
+          <td class="num-col" data-value="{{ entry.tip_points }}">{{ entry.tip_points }}</td>
+          <td class="num-col" data-value="{{ entry.bonus_points }}">{{ entry.bonus_points }}</td>
           <td class="num-col" data-value="{{ entry.average_points_per_matchday }}">{{ entry.average_points_per_matchday }}</td>
           <td class="num-col" data-value="{{ entry.matchday_wins }}">{{ entry.matchday_wins }}</td>
-        </tr>
         {% endfor %}
       </tbody>
     </table>
@@ -254,19 +257,33 @@ const endLabelPlugin = {
 const matchdays = {{ formkurve.matchdays | tojson }};
 const players   = {{ formkurve.players   | tojson }};
 
+// "Bonus" als erster Label (Index 0), dann Spieltag 1..N
+const formkurveLabels = ["Bonus", ...matchdays.map(md => "Spieltag " + md)];
+
 const pointsDatasets = Object.entries(players).map(([, info], i) => {
-  const raw = matchdays.map(md => info.points_by_matchday[md] ?? null);
-  // Formkurve: Punkte bleiben konstant wenn nicht mehr getippt → letzten Wert auffüllen
+  // Datenpunkte: Index 0 = Bonuspunkte (Startpunkt), dann Gesamtpunkte pro Spieltag
+  const raw = [info.bonus_points, ...matchdays.map(md => info.points_by_matchday[md] ?? null)];
   const lastVal = raw.filter(v => v !== null).at(-1) ?? null;
-  return buildDataset(
+  // last_tip_matchday auf neuen Index (verschoben um 1 durch Bonus-Punkt) umrechnen
+  const shiftedLastTip = info.last_tip_matchday;  // Index in matchdays; +1 für raw-Index
+  const ds = buildDataset(
     info.display_name, raw, palette[i % palette.length],
-    info.last_tip_matchday, matchdays, lastVal
+    shiftedLastTip, matchdays, lastVal
   );
+  // Bonus-Punkt (Index 0) als Raute hervorheben
+  const basePtRadius = ds.pointRadius;
+  ds.pointRadius = (ctx) => {
+    if (ctx.dataIndex === 0) return 5;
+    if (typeof basePtRadius === "function") return basePtRadius(ctx);
+    return basePtRadius ?? 3;
+  };
+  ds.pointStyle = (ctx) => ctx.dataIndex === 0 ? "rectRot" : "circle";
+  return ds;
 });
 
 const formkurveChart = new Chart(document.getElementById("formkurve"), {
   type: "line",
-  data: { labels: matchdays.map(md => "Spieltag " + md), datasets: pointsDatasets },
+  data: { labels: formkurveLabels, datasets: pointsDatasets },
   plugins: [endLabelPlugin],
   options: {
     responsive: true,

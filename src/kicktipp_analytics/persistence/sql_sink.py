@@ -29,6 +29,7 @@ from kicktipp_analytics.persistence.schema import (
     dim_match,
     dim_player,
     dim_team,
+    fact_player_bonus,
     fact_player_statistics,
     fact_ranking_snapshot,
     fact_tip,
@@ -178,3 +179,15 @@ class SqlDataSink:
                         for s in statistics
                     ],
                 )
+
+    def write_bonus_points(self, bonus: dict[str, int], siege: dict[str, float] | None = None) -> None:
+        if not bonus:
+            return
+        siege = siege or {}
+        rows = [
+            {"player_id": pid, "bonus_points": pts, "siege": siege.get(pid, 0.0)}
+            for pid, pts in bonus.items()
+        ]
+        with self.engine.begin() as conn:
+            conn.execute(fact_player_bonus.delete())
+            conn.execute(insert(fact_player_bonus), rows)

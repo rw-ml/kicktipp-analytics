@@ -93,7 +93,15 @@ class KicktippScraper(IKicktippDataSource):
             players = self._scrape_players(page)
             matches, results = self._scrape_matches_and_results(page, season)
             tips = self._scrape_tips(page, season, matches)
-        return ScrapedData(players=players, matches=matches, results=results, tips=tips)
+            bonus_points, siege_by_player = self._scrape_bonus_points(page, players)
+        return ScrapedData(
+            players=players,
+            matches=matches,
+            results=results,
+            tips=tips,
+            bonus_points=bonus_points,
+            siege_by_player=siege_by_player,
+        )
 
     # ------------------------------------------------------------------
     # Einzelmethoden (für Tests / direkten Aufruf)
@@ -255,6 +263,61 @@ class KicktippScraper(IKicktippDataSource):
         r'|^Spiel\s+um\s+Platz\s+\d+$',
         re.IGNORECASE,
     )
+
+    def _scrape_bonus_points(self, page: Page, players: list[Player]) -> tuple[dict[str, int], dict[str, float]]:
+        """Liest Bonuspunkte (td.bonus) von der regulären Tippübersicht
+        und kumulative Spieltagssiege (td.siege) von der Bonusseite.
+
+        Die reguläre Tippübersicht zeigt td.siege nur für den jeweiligen Spieltag,
+        nicht kumulativ. Die Bonusseite dagegen zeigt die Gesamtzahl Spieltagssiege.
+        """
+        # Schritt 1: Bonuspunkte von der regulären Seite (td.bonus ist dort kumulativ)
+        page.goto(self._url(self._selectors.TIPPUEBERSICHT_PATH.format(matchday=1)))
+        rows = page.locator(self._selectors.RANKING_ROW_SELECTOR)
+        bonus: dict[str, int] = {}
+        for i in range(rows.count()):
+            row = rows.nth(i)
+            name = _safe_inner_text(row.locator("div.mg_name"))
+            if not name:
+                continue
+            bonus_loc = row.locator("td.bonus")
+            if bonus_loc.count() > 0:
+                try:
+                    bonus[_slugify(name)] = int(_safe_inner_text(bonus_loc.first).strip())
+                except ValueError:
+                    pass
+
+        # Schritt 2: Kumulative Spieltagssiege von der Bonusseite
+        saison_id = self._find_tippsaison_id(page)
+        siege: dict[str, float] = {}
+        if saison_id:
+            bonus_url = f"{self._url('tippuebersicht')}?tippsaisonId={saison_id}&bonus=true"
+            page.goto(bonus_url)
+            bonus_rows = page.locator(self._selectors.RANKING_ROW_SELECTOR)
+            for i in range(bonus_rows.count()):
+                row = bonus_rows.nth(i)
+                name = _safe_inner_text(row.locator("div.mg_name"))
+                if not name:
+                    continue
+                siege_loc = row.locator("td.siege")
+                if siege_loc.count() > 0:
+                    try:
+                        siege[_slugify(name)] = float(
+                            _safe_inner_text(siege_loc.first).strip().replace(",", ".")
+                        )
+                    except ValueError:
+                        pass
+        return bonus, siege
+
+    def _find_tippsaison_id(self, page: Page) -> str | None:
+        """Sucht die tippsaisonId in Links auf der aktuellen Seite."""
+        loc = page.locator("a[href*='tippsaisonId']")
+        for i in range(loc.count()):
+            href = loc.nth(i).get_attribute("href") or ""
+            m = re.search(r'tippsaisonId=(\d+)', href)
+            if m:
+                return m.group(1)
+        return None
 
     def _read_matchday_title(self, page: Page, matchday_number: int) -> str | None:
         """Liest den Phasennamen aus dem Spieltag-Navigations-Tab.
