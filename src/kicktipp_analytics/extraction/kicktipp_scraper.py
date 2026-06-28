@@ -295,8 +295,14 @@ class KicktippScraper(IKicktippDataSource):
                 break
 
             # Prüfung 2: Gleiche Spiele wie letzter Spieltag?
+            # Fingerprint enthält Kickoff-Datum + Heimteam – damit unterscheiden
+            # sich auch K.o.-Runden bei denen alle Teams noch "Unbekannt" heißen,
+            # weil die Anstoßzeiten pro Runde unterschiedlich sind.
             fingerprint = frozenset(
-                rows.nth(i).locator("td").nth(2).inner_text().strip()
+                (
+                    rows.nth(i).locator("td").nth(0).inner_text().strip(),
+                    rows.nth(i).locator("td").nth(2).inner_text().strip(),
+                )
                 for i in range(rows.count())
                 if rows.nth(i).locator("td").count() > 2
             )
@@ -305,6 +311,12 @@ class KicktippScraper(IKicktippDataSource):
             prev_fingerprint = fingerprint
 
             yield matchday_number
+
+            # Das Finale ist der letzte echte Spieltag – danach abbrechen
+            # (verhindert dass Kicktipp-Bonus-Runden o.ä. mit eingelesen werden)
+            title = self._read_matchday_title(page, matchday_number)
+            if title and re.fullmatch(r'finale', title.strip(), re.IGNORECASE):
+                break
 
     @contextmanager
     def _page(self) -> Iterator[Page]:

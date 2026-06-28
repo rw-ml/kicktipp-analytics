@@ -15,7 +15,7 @@ Verwendung:
 
 Voraussetzung: .env mit KICKTIPP_USERNAME, KICKTIPP_PASSWORD,
 KICKTIPP_COMMUNITY_URL ist im Projektverzeichnis vorhanden (siehe
-.env.example). Es wird bewusst ein bereits gespielter Spieltag benötigt,
+.env). Es wird bewusst ein bereits gespielter Spieltag benötigt,
 da nur dort Punkte-Badges überhaupt auftreten können - bei Spieltag 1
 würde das Skript ggf. nur unausgewertete Tipps ohne Badge zeigen.
 

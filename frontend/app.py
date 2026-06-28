@@ -76,7 +76,7 @@ def matchday(matchday_number: int):
     return render_template(
         "matchday.html",
         matchday_number=matchday_number,
-        matchday_name=current["name"] if current else None,
+        matchday_title=current["title"] if current else f"Spieltag {matchday_number}",
         available_matchdays=available,
         **detail,
     )

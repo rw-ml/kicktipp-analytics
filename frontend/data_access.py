@@ -98,18 +98,32 @@ _MATCHDAY_ABBREVIATIONS: dict[str, str] = {
     "spiel um platz 3": "3.",
 }
 
+# Vollständige Anzeigenamen für die Seitenüberschrift
+_MATCHDAY_FULL_NAMES: dict[str, str] = {
+    "sf": "Sechzehntelfinale",
+    "af": "Achtelfinale",
+    "vf": "Viertelfinale",
+    "hf": "Halbfinale",
+    "f": "Finale",
+    "3.": "Spiel um Platz 3",
+}
 
-def _abbreviate_matchday_name(name: str | None, matchday_number: int) -> str:
-    """Kürzt Phasennamen auf bekannte Abkürzungen:
-    Sechzehntelfinale → SF, Achtelfinale → AF, Viertelfinale → VF,
-    Halbfinale → HF, Finale → F. Gruppenphase bleibt 'Spieltag N'."""
-    if not name:
-        return f"Spieltag {matchday_number}"
-    lower = name.strip().lower()
-    for key, abbrev in _MATCHDAY_ABBREVIATIONS.items():
-        if lower == key:
-            return abbrev
-    return name
+
+def _matchday_display(raw_name: str | None, matchday_number: int) -> dict:
+    """Gibt abbrev (für Nav-Button) und title (für Seitenüberschrift) zurück."""
+    if not raw_name:
+        return {
+            "abbrev": None,
+            "title": f"Spieltag {matchday_number}",
+            "is_group": True,
+        }
+    lower = raw_name.strip().lower()
+    abbrev = _MATCHDAY_ABBREVIATIONS.get(lower)
+    if abbrev:
+        full = _MATCHDAY_FULL_NAMES.get(abbrev.lower(), raw_name)
+        return {"abbrev": abbrev, "title": full, "is_group": False}
+    # Gruppenphase: "Spieltag N" oder ähnliches
+    return {"abbrev": None, "title": raw_name, "is_group": True}
 
 
 def all_matchday_numbers() -> list[int]:
@@ -118,7 +132,7 @@ def all_matchday_numbers() -> list[int]:
 
 
 def all_matchdays() -> list[dict]:
-    """Alle Spieltage mit Nummer und Titel (abgekürzt für K.o.-Runden)."""
+    """Alle Spieltage mit Nummer, Titel und Nav-Abkürzung."""
     with get_engine().connect() as conn:
         rows = conn.execute(
             select(
@@ -134,11 +148,8 @@ def all_matchdays() -> list[dict]:
         if r.matchday_number in seen:
             continue
         seen.add(r.matchday_number)
-        display = _abbreviate_matchday_name(r.matchday_name, r.matchday_number)
-        result.append({
-            "number": r.matchday_number,
-            "name": display,
-        })
+        display = _matchday_display(r.matchday_name, r.matchday_number)
+        result.append({"number": r.matchday_number, **display})
     return result
 
 
@@ -520,8 +531,8 @@ def details_data() -> dict:
     for r in quality_rows:
         r["is_bremsfett"] = r["misses"] == max_misses and max_misses > 0
 
-    quality_rows.sort(key=lambda r: -r["hit_rate_tendency"])
-    assign_competition_rank(quality_rows, key="hit_rate_tendency")
+    # Gleiche Reihenfolge wie Bestenliste (nach Rang, Spieler ohne Rang ans Ende)
+    quality_rows.sort(key=lambda r: r["rank"] if isinstance(r["rank"], int) else 9999)
 
     # ── Tendenz-Verhalten zusammenbauen ──────────────────────────────
     tendency_rows = [

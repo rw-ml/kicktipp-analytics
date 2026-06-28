@@ -18,24 +18,12 @@
 
 <section class="panel">
   <div class="panel__header-row">
-    <h2 class="panel__title">
-      Spieltag {{ matchday_number }}
-      {%- if matchday_name and matchday_name != 'Spieltag ' ~ matchday_number %}
-        <span class="matchday-phase-label">{{ matchday_name }}</span>
-      {%- endif %}
-    </h2>
+    <h2 class="panel__title">{{ matchday_title }}</h2>
     <div class="matchday-nav">
-      {%- set ns = namespace(prev_phase='') %}
       {% for m in available_matchdays %}
-      {%- set is_group = m.name.startswith("Spieltag") %}
-        {%- set phase = 'gruppe' if is_group else m.name %}
-        {%- if ns.prev_phase and phase != ns.prev_phase %}
-          <span class="matchday-nav__sep" title="{{ m.name }}"></span>
-        {%- endif %}
-        {%- set ns.prev_phase = phase %}
-        <a class="matchday-nav__item {% if m.number == matchday_number %}is-active{% endif %}{% if not is_group %} matchday-nav__item--knockout{% endif %}"
+        <a class="matchday-nav__item {% if m.number == matchday_number %}is-active{% endif %}{% if not m.is_group %} matchday-nav__item--knockout{% endif %}"
            href="{{ url_for('matchday', matchday_number=m.number) }}"
-           title="{{ m.name }}">{{ m.number }}</a>
+           title="{{ m.title }}">{{ m.abbrev if m.abbrev else m.number }}</a>
       {% endfor %}
     </div>
   </div>
