@@ -154,6 +154,10 @@ class KicktippScraper(IKicktippDataSource):
         results: list[MatchResult] = []
         for matchday_number in self._iter_spielplan_matchdays(page):
             matchday_title = self._read_matchday_title(page, matchday_number)
+            is_knockout = matchday_title is not None and self._MATCHDAY_NAME_PATTERN.match(
+                matchday_title
+            ) and not matchday_title.strip().lower().startswith(("spieltag", "gruppe"))
+            match_type = MatchType.KNOCKOUT if is_knockout else MatchType.GROUP
             rows = page.locator(self._selectors.SPIELPLAN_ROW_SELECTOR)
             for row_index in range(rows.count()):
                 row = rows.nth(row_index)
@@ -178,7 +182,7 @@ class KicktippScraper(IKicktippDataSource):
                         home_team=Team(id=_slugify(home_name), name=home_name),
                         away_team=Team(id=_slugify(away_name), name=away_name),
                         kickoff=_parse_kickoff(kickoff_text),
-                        match_type=MatchType.GROUP,
+                        match_type=match_type,
                     )
                 )
 
